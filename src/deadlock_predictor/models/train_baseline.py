@@ -31,22 +31,26 @@ def run(config: dict) -> dict:
     print(f"train {len(train):,} rows, validation {len(validation):,} rows")
 
     results = {"0": {"C": None, "validation": scores(y_val, np.full(len(y_val), 0.5))}}
-    best = None  # (log loss, rung, C, model)
+    models = {}  # rung -> model with that rung's best C
     for rung in settings["rungs"]:
         cols = input_columns(rung)
-        by_C = {}
+        by_C, fits = {}, {}
         for C in settings["C_grid"]:
             start = time.time()
-            model = make_model(rung, C).fit(train[cols], train[LABEL])
-            s = scores(y_val, model.predict_proba(validation[cols])[:, 1])
+            fits[C] = make_model(rung, C).fit(train[cols], train[LABEL])
+            s = scores(y_val, fits[C].predict_proba(validation[cols])[:, 1])
             by_C[C] = s
             print(f"rung {rung} C={C:<6} log loss {s['log_loss']:.4f} ({time.time() - start:.0f}s)")
-            if best is None or s["log_loss"] < best[0]:
-                best = (s["log_loss"], rung, C, model)
         best_C = min(by_C, key=lambda c: by_C[c]["log_loss"])
         results[str(rung)] = {"C": best_C, "validation": by_C[best_C], "by_C": by_C}
+        models[rung] = fits[best_C]
 
-    _, rung, C, model = best
+    # Prefer the simplest rung within `tolerance` of the best: a gain smaller than that is
+    # noise, not a reason to keep extra parameters.
+    losses = {r: results[str(r)]["validation"]["log_loss"] for r in models}
+    cutoff = min(losses.values()) + settings["tolerance"]
+    rung = min(r for r, loss in losses.items() if loss <= cutoff)
+    C, model = results[str(rung)]["C"], models[rung]
     model_path = ROOT / settings["model_path"]
     model_path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump({"rung": rung, "C": C, "model": model}, model_path)
