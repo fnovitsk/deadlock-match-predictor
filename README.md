@@ -4,7 +4,7 @@ Estimates each team's probability of winning a [Deadlock](https://store.steampow
 
 The model is trained on historical match data: every in-game stat snapshot (net worth, kills, objectives, heroes, game time) becomes a training example labeled with whether that team went on to win. Running the model over every snapshot of one match produces a win-probability curve.
 
-> **Status:** Milestone 1 (data exploration). See the roadmap below.
+> **Status:** Milestone 2 (data pipeline). See the roadmap below.
 
 ## Roadmap
 
@@ -39,6 +39,14 @@ conda env update -f environment.yml --prune --solver=libmamba
 ```
 
 `--solver=libmamba` is much faster than conda's classic solver (the default before conda 23.10). `PYTHONNOUSERSITE=1` (set by `environment.yml` and in the kernel spec) keeps packages pip-installed with `--user` for a system Python from shadowing the environment's own.
+
+## Building the dataset
+
+```bash
+python -m deadlock_predictor.data.pipeline
+```
+
+Downloads every ranked 6v6 match since the last major patch (one file per partition in `data/raw/`; reruns skip finished partitions) and writes `data/processed/snapshots.parquet`: one row per match and snapshot time, with Team0-minus-Team1 features, the label, and a chronological train/validation/test split. `notebooks/02_check_pipeline.ipynb` checks the result.
 
 ## Project layout
 

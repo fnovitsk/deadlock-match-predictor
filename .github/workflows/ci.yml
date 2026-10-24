@@ -1,0 +1,27 @@
+# Lint and test every push to main and every pull request.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}  # login shell, so the conda env is activated
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: environment.yml
+          activate-environment: deadlock
+          miniforge-version: latest
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Test
+        run: pytest
