@@ -4,7 +4,7 @@ Estimates each team's probability of winning a [Deadlock](https://store.steampow
 
 The model is trained on historical match data: every in-game stat snapshot (net worth, kills, objectives, heroes, game time) becomes a training example labeled with whether that team went on to win. Running the model over every snapshot of one match produces a win-probability curve.
 
-> **Status:** Milestone 0 (project setup). See the roadmap below.
+> **Status:** Milestone 1 (data exploration). See the roadmap below.
 
 ## Roadmap
 

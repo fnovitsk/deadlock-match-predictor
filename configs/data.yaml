@@ -1,4 +1,4 @@
-# Data scope. Filter values confirmed against the dumps; dates are set in Milestone 1 findings.
+# Data scope. Values confirmed in notebooks/01_explore_data.ipynb.
 source:
   manifest_url: https://data.deadlock-api.com/v1/manifest.json
   table: match_player
@@ -6,8 +6,9 @@ source:
 filters:
   match_mode: Ranked
   game_mode: Normal      # 6v6; the other main mode is StreetBrawl
-  start_date: null       # set to the latest major patch date
-  end_date: null
+  # Last major patch (api.deadlock-api.com/v1/patches/big-days); game_mode_version is constant.
+  start_time: "2026-09-29T20:25:11Z"
+  end_time: null
 
 # Small local sample for exploration (Milestone 1).
 sample:
