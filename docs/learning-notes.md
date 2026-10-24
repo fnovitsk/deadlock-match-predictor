@@ -35,3 +35,21 @@ Notebook: `notebooks/01_explore_data.ipynb` (its last section lists every decisi
 **Why logistic regression is a sensible baseline.** Win rate vs. net worth lead is S-shaped at every game time, and that's exactly the curve logistic regression fits: P(win) = σ(w·x + b). The slope changes with time (a 10k lead matters more at 15 minutes than at 35), which hints that interactions or a tree model (Milestone 4) will help.
 
 **Data engineering lessons.** Read only the columns you need (Parquet + DuckDB made a 4 GB remote file queryable in seconds). Check how a dataset is updated: here, new rows (even for old matches) land in delta files, so reading only base files would silently miss data. And keep the sample reproducible: hashing `match_id` with a seed gives the same "random" matches every run.
+
+## Milestone 2 — Data pipeline
+
+Code: `python -m deadlock_predictor.data.pipeline`. Check: `notebooks/02_check_pipeline.ipynb`.
+
+**Point-in-time correctness.** A feature at time t may only use what was knowable at t. In practice that meant three rules in `features/snapshots.py`: drop the snapshot taken as the match ends, count an objective or mid-boss kill only if it happened at or before t, and never read end-of-match columns. Each rule has a unit test on a hand-made match where the right answer is obvious. Tests like these are how you keep leakage from creeping back in when the code changes later.
+
+**Why Team0 − Team1 differences.** The question is "who's ahead, and by how much?", so the model gets the gap rather than both teams' totals. That halves the inputs and builds in a symmetry: a 5k lead means the same whichever side has it. One label (`team0_win`) then covers both teams, since P(Team1 wins) = 1 − P(Team0 wins).
+
+**Chronological splits.** The model will always predict games played after the ones it learned from, so the test set should be newer than the training set: train on the oldest 70% of matches, validate on the next 15%, test on the newest 15%. A random split would let the model learn from games played *after* some test games (the meta shifts over a patch), which flatters the score. Splitting by match keeps the ~9 nearly identical snapshots of one game out of two splits. Our own data shows why time matters: Team0 won 50.7% ± 0.2% of training matches but ~50.0% later. The game drifted slightly within one patch, and a chronological split is what exposes drift like that.
+
+**Train, validation, test.** Train is for fitting. Validation is for every decision we make (which features, which model, which settings). Test is looked at once, at the end, to get an honest score. Every look at data while deciding something is a little bit of fitting, which is why notebook 02 analyses only train.
+
+**Redundant features.** Every kill is someone's death, so `kills_diff` and `deaths_diff` are near mirror images. That barely hurts predictions, but a linear model can split one effect between two columns in many ways, so its coefficients become unstable and hard to read. Worth removing for an interpretable baseline.
+
+**Pipelines that can rerun.** Each stage writes to disk, so later stages rerun without redoing earlier ones (feature building takes seconds; downloading takes minutes). The download is split per partition, finished partitions are skipped, and each file is written under a temporary name and renamed when complete, so an interrupted run never leaves a half-written file that looks finished.
+
+**Check your assumptions against the data.** Notebook 01 assumed `average_badge` was each player's rank. Building the team rank gap gave a feature that was exactly 0 everywhere: the column is the lobby average, copied to every player. A feature with no variation is a cheap but reliable sign that something is off.
