@@ -1,13 +1,22 @@
-# Data scope for training. Values are placeholders until Milestone 1 confirms them.
+# Data scope. Values confirmed in notebooks/01_explore_data.ipynb.
 source:
   manifest_url: https://data.deadlock-api.com/v1/manifest.json
   table: match_player
 
 filters:
-  match_mode: ranked     # exact value confirmed in Milestone 1
-  team_size: 6
-  start_date: null       # set to the latest major patch date
-  end_date: null
+  match_mode: Ranked
+  game_mode: Normal      # 6v6; the other main mode is StreetBrawl
+  # Last major patch (api.deadlock-api.com/v1/patches/big-days); game_mode_version is constant.
+  start_time: "2026-09-29T20:25:11Z"
+  end_time: null
+
+# Small local sample for exploration (Milestone 1).
+sample:
+  n_matches: 5000
+  min_partition: 118     # partition = match_id // 1_000_000 (higher = newer)
+  max_partition: 120
+  seed: 0
+  path: data/interim/sample_ranked.parquet
 
 paths:
   raw: data/raw

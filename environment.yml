@@ -5,9 +5,13 @@ dependencies:
   - python=3.11
   # data
   - numpy
+  # OpenBLAS instead of MKL: MKL loads DLLs at runtime that Windows can't find
+  # unless conda is activated, which crashes Jupyter kernels.
+  - libblas=*=*openblas
   - pandas
   - pyarrow
   - python-duckdb
+  - pytz  # duckdb needs it to return timezone-aware timestamps
   - requests
   - pyyaml
   # modeling
