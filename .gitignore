@@ -1,0 +1,30 @@
+# Data and trained models (large, regenerable)
+data/*
+!data/README.md
+models/*
+!models/README.md
+*.parquet
+*.duckdb
+*.duckdb.wal
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Secrets and local settings
+.env
+.claude/settings.local.json
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

@@ -1,0 +1,15 @@
+# Data scope for training. Values are placeholders until Milestone 1 confirms them.
+source:
+  manifest_url: https://data.deadlock-api.com/v1/manifest.json
+  table: match_player
+
+filters:
+  match_mode: ranked     # exact value confirmed in Milestone 1
+  team_size: 6
+  start_date: null       # set to the latest major patch date
+  end_date: null
+
+paths:
+  raw: data/raw
+  interim: data/interim
+  processed: data/processed

@@ -1,0 +1,30 @@
+name: deadlock
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  # data
+  - numpy
+  - pandas
+  - pyarrow
+  - python-duckdb
+  - requests
+  - pyyaml
+  # modeling
+  - scikit-learn
+  - lightgbm
+  # notebooks and plots
+  - jupyterlab
+  - ipykernel
+  - matplotlib
+  # dev tools
+  - pytest
+  - ruff
+  - pre-commit
+  - nbstripout
+  - pip
+  - pip:
+      - -e .
+variables:
+  # Ignore packages pip-installed with --user for a system Python 3.11; they shadow the env's.
+  PYTHONNOUSERSITE: "1"
