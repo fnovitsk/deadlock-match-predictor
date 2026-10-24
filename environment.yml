@@ -8,6 +8,7 @@ dependencies:
   - pandas
   - pyarrow
   - python-duckdb
+  - pytz  # duckdb needs it to return timezone-aware timestamps
   - requests
   - pyyaml
   # modeling
