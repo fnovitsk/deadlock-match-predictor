@@ -18,6 +18,16 @@ sample:
   seed: 0
   path: data/interim/sample_ranked.parquet
 
+# Full pipeline (Milestone 2): python -m deadlock_predictor.data.pipeline
+pipeline:
+  raw_dir: data/raw/match_player          # one Parquet file per partition
+  snapshots_path: data/processed/snapshots.parquet
+  summary_path: data/processed/summary.json   # filter counts and split boundaries
+  refresh_latest: 2      # newest partitions still fill up: always re-download them
+  split:
+    train: 0.70          # oldest 70% of matches
+    validation: 0.15     # next 15%; the newest 15% are test
+
 paths:
   raw: data/raw
   interim: data/interim
