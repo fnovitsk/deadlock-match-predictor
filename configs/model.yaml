@@ -1,0 +1,6 @@
+# Model settings. Test split stays sealed until the end of Milestone 4.
+baseline:
+  rungs: [1, 2, 3, 4]          # see deadlock_predictor.models.baseline.RUNGS
+  C_grid: [0.01, 0.1, 1, 10, 100]   # inverse L2 strength, tuned on validation
+  model_path: models/baseline.joblib
+  metrics_path: models/baseline_metrics.json
