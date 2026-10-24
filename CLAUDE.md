@@ -28,6 +28,14 @@ Pipeline (`python -m deadlock_predictor.data.pipeline [--force] [--skip-extract]
 - `data.split` adds `split` by start time (70/15/15 train/validation/test).
 - Output: `data/processed/snapshots.parquet` and `summary.json`. Notebook 02 checks it. Analyse on train only.
 
+Models (`src/deadlock_predictor/models/`, settings in `configs/model.yaml`):
+- `python -m deadlock_predictor.models.train_baseline` → `models/baseline.joblib`, `models/baseline_metrics.json`.
+- Baseline = rung 3 (all diffs × time spline, logistic regression, no intercept): **validation log loss 0.5489**, Brier 0.188, ECE 0.004. Always-50%: 0.6931.
+- Models must stay symmetric (P(mirrored) = 1 − P): inputs are diffs or diffs × whole-game values, no intercept.
+- `models.evaluate.scores` / `scores_by_time` / `reliability` are the shared metrics.
+- **The test split is sealed until the end of Milestone 4.** Use validation for every decision.
+- `t` is unsigned in the data: convert to float before arithmetic or nearest-value lookups.
+
 ## Commands
 Conda is not on PATH in Claude's shell: use `C:\Users\fnovi\miniconda3\Scripts\conda.exe`. `gh` is not on PATH either: `C:\Program Files\GitHub CLI\gh.exe`.
 `conda run` doesn't pass stdin: to pipe code, call `C:\Users\fnovi\miniconda3\envs\deadlock\python.exe -` with `PYTHONNOUSERSITE=1`.

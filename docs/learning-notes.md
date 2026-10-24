@@ -53,3 +53,25 @@ Code: `python -m deadlock_predictor.data.pipeline`. Check: `notebooks/02_check_p
 **Pipelines that can rerun.** Each stage writes to disk, so later stages rerun without redoing earlier ones (feature building takes seconds; downloading takes minutes). The download is split per partition, finished partitions are skipped, and each file is written under a temporary name and renamed when complete, so an interrupted run never leaves a half-written file that looks finished.
 
 **Check your assumptions against the data.** Notebook 01 assumed `average_badge` was each player's rank. Building the team rank gap gave a feature that was exactly 0 everywhere: the column is the lobby average, copied to every player. A feature with no variation is a cheap but reliable sign that something is off.
+
+## Milestone 3 — Baseline model
+
+Code: `python -m deadlock_predictor.models.train_baseline`. Results: `notebooks/03_baseline.ipynb`.
+
+**Logistic regression.** P(win) = σ(w · x), with σ(z) = 1 / (1 + e^−z). Training finds the weights that make the observed outcomes most likely, which is the same as minimizing log loss. It's the right first model when the relationship looks like an S-curve, and its weights can be read.
+
+**Scoring probabilities.** Log loss (average −log of the probability given to what happened) punishes confident mistakes hard; Brier score (squared error) is gentler; calibration asks whether "70%" really means 70%. Accuracy is a weak measure for probabilities: it treats an early 52% and a late 95% the same.
+
+**Build symmetry into the model.** With no intercept and only Team0 − Team1 diffs as inputs (or diffs times something about the whole game), the logit is an odd function: swapping the teams gives exactly 1 − P. We planned to train on mirrored copies of every row, but for this model a mirrored row has exactly the same loss as the original, so mirroring would only count every row twice. A constraint in the model's structure beats one in the data.
+
+**Varying coefficients.** Multiplying each diff by a few smooth spline functions of game time lets its weight change with time while staying a linear model. The curves show a soul is worth ~20× less at 60 minutes than at 5, and that buildings matter more than anything but net worth late.
+
+**A ladder of models.** Adding one idea per rung shows what each is worth: net worth alone gives 92% of the gain (0.693 → 0.560), everything else together brings it to 0.549, and lobby rank adds nothing.
+
+**Prefer the simpler model when the gain is noise.** Rung 4 beat rung 3 by 0.00003 log loss. Keeping extra parameters for a difference that small invites overfitting to the validation set, so the training script picks the simplest rung within 0.0005 of the best.
+
+**Regularization depends on data size.** An L2 penalty guards against fitting noise. With 2.4M rows and ~100 weights, every penalty strength scored the same: there's nothing to fix. It will matter when features multiply (heroes) or data shrinks.
+
+**Correlated features make weights hard to read.** Net worth, level and damage move together, so the model can split one effect among them, and some weights look backwards (`level_diff` is negative mid-game). Trust predictions, not individual weights.
+
+**Watch your dtypes.** Snapshot time is stored as an unsigned integer. pandas' "nearest" lookup subtracts index values, and unsigned subtraction wraps around, so it silently picked the wrong neighbor. Converting to float fixed a plot that looked plausible but was wrong.
