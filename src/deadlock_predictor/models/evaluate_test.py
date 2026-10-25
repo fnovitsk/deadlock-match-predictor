@@ -1,6 +1,10 @@
 """Score the baseline and the final model on the test split, once.
 
 Run: python -m deadlock_predictor.models.evaluate_test [--force]
+(after `python -m deadlock_predictor.models.refit`)
+
+Each model is scored twice: refit on train + validation (what we would deploy; the main
+score) and as validated, trained on train only (to show what refitting bought).
 
 Every decision so far (features, model family, settings) was made on validation. The test
 split, the newest 15% of matches, was never read. Looking at it once gives an honest
@@ -22,6 +26,7 @@ import yaml
 from deadlock_predictor.features.snapshots import LABEL
 from deadlock_predictor.models.data import load_split, predict_saved, snapshot_columns
 from deadlock_predictor.models.evaluate import reliability, scores, scores_by_time
+from deadlock_predictor.models.refit import cells, refit_path
 
 ROOT = Path(__file__).resolve().parents[3]
 CONFIG_PATH = ROOT / "configs" / "model.yaml"
@@ -35,8 +40,12 @@ def run(config: dict, force: bool = False) -> dict:
             "Pass --force only if you accept that the test score is no longer independent."
         )
     final = json.loads((ROOT / config["final"]["path"]).read_text())
-    cells = dict.fromkeys(["baseline", final["choice"]])
-    saved = {cell: joblib.load(ROOT / config[cell]["model_path"]) for cell in cells}
+    saved, train_only = {}, {}
+    for cell in cells(config):
+        if not refit_path(config[cell]).exists():
+            raise FileNotFoundError("Run `python -m deadlock_predictor.models.refit` first")
+        saved[cell] = joblib.load(refit_path(config[cell]))
+        train_only[cell] = joblib.load(ROOT / config[cell]["model_path"])
     columns = sorted({c for s in saved.values() for c in snapshot_columns(s["columns"])})
     test = load_split("test", columns)
     y = test[LABEL].to_numpy()
@@ -49,14 +58,17 @@ def run(config: dict, force: bool = False) -> dict:
         results[cell] = {
             "validation": metrics["best"]["validation"],
             "test": scores(y, p),
+            "test_train_only": scores(y, predict_saved(train_only[cell], test)),
             "test_by_time": scores_by_time(test.t.to_numpy(), y, p)
             .reset_index()
             .to_dict("records"),
             "test_reliability": reliability(y, p).reset_index(names="bin").to_dict("records"),
         }
+        r = results[cell]
         print(
-            f"{cell}: test log loss {results[cell]['test']['log_loss']:.4f} "
-            f"(validation {results[cell]['validation']['log_loss']:.4f})"
+            f"{cell}: test log loss {r['test']['log_loss']:.4f} refit, "
+            f"{r['test_train_only']['log_loss']:.4f} train only "
+            f"(validation {r['validation']['log_loss']:.4f})"
         )
     report = {
         "built_at": datetime.now(UTC).isoformat(),
