@@ -72,6 +72,18 @@ def add_heroes(df: pd.DataFrame, ids: list[int], path: Path = HEROES_PATH) -> pd
     return pd.concat([df, columns], axis=1)
 
 
+def snapshot_columns(columns: list[str]) -> list[str]:
+    """The columns that come from the snapshot table (hero columns come from `add_heroes`)."""
+    return [c for c in columns if not c.startswith("hero_")]
+
+
+def predict_saved(saved: dict, df: pd.DataFrame) -> np.ndarray:
+    """P(Team0 wins) from a saved model entry (`model`, `columns`, `hero_ids`)."""
+    if saved["hero_ids"]:
+        df = add_heroes(df, saved["hero_ids"])
+    return saved["model"].predict_proba(df[saved["columns"]])[:, 1]
+
+
 def mirror(df: pd.DataFrame) -> pd.DataFrame:
     """The same snapshots seen from the other side: diffs negated, label flipped.
 

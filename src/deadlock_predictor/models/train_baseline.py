@@ -68,7 +68,7 @@ def run(settings: dict) -> dict:
     )
     metrics = {
         "built_at": datetime.now(UTC).isoformat(),
-        "best": {"rung": rung, "C": C},
+        "best": {"rung": rung, "C": C, "validation": results[str(rung)]["validation"]},
         "hero_ids": ids,
         "rungs": results,
     }

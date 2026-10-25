@@ -11,3 +11,35 @@ baseline_heroes:              # the same ladder with hero picks (Milestone 4)
   tolerance: 0.0005
   model_path: models/baseline_heroes.joblib
   metrics_path: models/baseline_heroes_metrics.json
+
+# LightGBM (Milestone 4): python -m deadlock_predictor.models.train_gbm
+gbm:
+  heroes: false
+  learning_rate: 0.05
+  n_estimators: 3000           # upper bound; early stopping on validation picks the count
+  early_stopping_rounds: 100
+  grid:
+    num_leaves: [31, 127]      # leaves per tree: how complex one tree can be
+    min_child_samples: [200, 2000]   # rows a leaf needs: guards against fitting noise
+  model_path: models/gbm.joblib
+  metrics_path: models/gbm_metrics.json
+gbm_heroes:
+  heroes: true
+  learning_rate: 0.05
+  n_estimators: 3000
+  early_stopping_rounds: 100
+  grid:
+    num_leaves: [31, 127]
+    min_child_samples: [200, 2000]
+  model_path: models/gbm_heroes.joblib
+  metrics_path: models/gbm_heroes_metrics.json
+
+# The final pick among the four cells, simplest first.
+final:
+  cells: [baseline, baseline_heroes, gbm, gbm_heroes]
+  tolerance: 0.0005
+  path: models/final.json
+
+# One-time test evaluation (end of Milestone 4): python -m deadlock_predictor.models.evaluate_test
+test:
+  path: models/test_metrics.json
