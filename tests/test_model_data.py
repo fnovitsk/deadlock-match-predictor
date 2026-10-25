@@ -1,7 +1,14 @@
 import pandas as pd
 import pytest
 
-from deadlock_predictor.models.data import load_split, mirror, with_mirror
+from deadlock_predictor.models.data import (
+    add_heroes,
+    hero_column,
+    hero_ids,
+    load_split,
+    mirror,
+    with_mirror,
+)
 
 
 @pytest.fixture
@@ -56,3 +63,36 @@ def test_with_mirror_balances_the_label(table):
     df = with_mirror(load_split("train", path=table))
     assert len(df) == 6
     assert df.team0_win.mean() == 0.5
+
+
+@pytest.fixture
+def heroes(tmp_path):
+    # Match 1: Team0 has hero 3, Team1 has hero 5. Match 4: Team1 has hero 3, hero 9 (rare).
+    df = pd.DataFrame(
+        {"match_id": [1, 1, 4, 4, 2], "hero_id": [3, 5, 3, 9, 7], "sign": [1, -1, -1, 1, 1]}
+    )
+    path = tmp_path / "heroes.parquet"
+    df.to_parquet(path)
+    return path
+
+
+def test_hero_ids_come_from_the_split(table, heroes):
+    assert hero_ids("train", path=heroes, snapshots_path=table) == [3, 5, 9]
+
+
+def test_add_heroes_signs_each_row(table, heroes):
+    df = add_heroes(load_split("train", path=table), [3, 5], path=heroes)
+    assert [hero_column(3), hero_column(5)] == ["hero_3_diff", "hero_5_diff"]
+    assert df.hero_3_diff.tolist() == [1, 1, -1]  # rows: match 1, match 1, match 4
+    assert df.hero_5_diff.tolist() == [-1, -1, 0]
+    assert df.hero_3_diff.dtype == "int8"
+
+
+def test_hero_outside_the_list_is_dropped(table, heroes):
+    df = add_heroes(load_split("train", path=table), [3, 5], path=heroes)
+    assert "hero_9_diff" not in df.columns
+
+
+def test_mirror_negates_heroes(table, heroes):
+    df = add_heroes(load_split("train", path=table), [3, 5], path=heroes)
+    assert (mirror(df).hero_3_diff == -df.hero_3_diff).all()
