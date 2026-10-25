@@ -149,7 +149,8 @@ def make_model(rung: int, C: float = 1.0, hero_ids=()) -> Pipeline:
 def weight_curves(model: Pipeline, times: np.ndarray) -> pd.DataFrame:
     """Each diff's weight as a function of game time, per unit of that diff (raw units).
 
-    Only for time-varying rungs. weight(t) = Σ_k w_k · B_k(t) / scale_k.
+    Only for time-varying rungs. weight(t) = Σ_k w_k · B_k(t) / scale_k. Time-varying hero
+    weights (rung 6) are included too.
     """
     features: DiffFeatures = model.named_steps["features"]
     if not features.by_time:
@@ -157,8 +158,14 @@ def weight_curves(model: Pipeline, times: np.ndarray) -> pd.DataFrame:
     coef = model.named_steps["logreg"].coef_[0] / model.named_steps["scale"].scale_
     basis = features._basis(pd.DataFrame({"t": times}))
     n_basis = basis.shape[1]
+    # Coefficient blocks follow `DiffFeatures._names`: diffs, then rank, then heroes.
+    blocks = list(features.diffs) + (["net_worth_diff*rank"] if features.rank else [])
+    if features.heroes_by_time:
+        blocks += list(features.heroes)
     curves = {
-        d: basis @ coef[i * n_basis : (i + 1) * n_basis] for i, d in enumerate(features.diffs)
+        name: basis @ coef[i * n_basis : (i + 1) * n_basis]
+        for i, name in enumerate(blocks)
+        if name != "net_worth_diff*rank"
     }
     return pd.DataFrame(curves, index=pd.Index(times, name="t"))
 

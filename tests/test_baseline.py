@@ -85,3 +85,10 @@ def test_hero_rung_needs_hero_ids():
 def test_input_columns_add_heroes_only_for_hero_rungs():
     assert input_columns(3, HEROES) == input_columns(3)
     assert input_columns(6, HEROES)[-4:] == [hero_column(h) for h in HEROES]
+
+
+def test_weight_curves_include_time_varying_heroes(data):
+    model = make_model(6, hero_ids=HEROES).fit(data[input_columns(6, HEROES)], data.team0_win)
+    curves = weight_curves(model, np.array([300, 1200, 2400]))
+    assert list(curves.columns) == DIFFS + [hero_column(h) for h in HEROES]
+    assert (curves[hero_column(1)] > 0.5).all()  # the strong hero helps at every time
