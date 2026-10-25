@@ -36,6 +36,7 @@ def match_rows(
             "match_id": match_id,
             "player_slot": slot,
             "team": team,
+            "hero_id": slot + 1,
             "start_time": datetime(2026, 10, 1, tzinfo=UTC),
             "duration_s": duration_s,
             "winning_team": "Team0",
