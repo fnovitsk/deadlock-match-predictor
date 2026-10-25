@@ -29,11 +29,14 @@ Pipeline (`python -m deadlock_predictor.data.pipeline [--force] [--skip-extract]
 - Output: `data/processed/snapshots.parquet` and `summary.json`. Notebook 02 checks it. Analyse on train only.
 
 Models (`src/deadlock_predictor/models/`, settings in `configs/model.yaml`):
-- `python -m deadlock_predictor.models.train_baseline` → `models/baseline.joblib`, `models/baseline_metrics.json`.
-- Baseline = rung 3 (all diffs × time spline, logistic regression, no intercept): **validation log loss 0.5489**, Brier 0.188, ECE 0.004. Always-50%: 0.6931.
-- Models must stay symmetric (P(mirrored) = 1 − P): inputs are diffs or diffs × whole-game values, no intercept.
+- `train_baseline` → `models/baseline*.joblib` (sections `baseline`: rungs 1-4, `baseline_heroes`: rungs 5-6); `train_gbm` → `models/gbm*.joblib` and `models/final.json` (pick among 4 cells, simplest within 0.0005); `refit` → `*_refit.joblib` on train + validation; `evaluate_test` → `models/test_metrics.json` (refuses to rerun without `--force`).
+- Saved models are dicts with `model`, `columns`, `hero_ids`: predict with `models.data.predict_saved`.
+- Baseline = rung 3 (all diffs × time spline, LR, no intercept): validation log loss 0.5489, **test 0.5472**. Final = LightGBM + heroes, refit: validation 0.5183, **test 0.5232**. Always-50%: 0.6931.
+- Models must stay symmetric (P(mirrored) = 1 − P): LR via diffs and no intercept; LightGBM (`models.gbm.SymmetricLGBM`) via mirrored training and logit(P) = ½(g(x) − g(mirror x)).
+- Heroes: `heroes.parquet` (match_id, hero_id, sign) → signed one-hot `hero_<id>_diff` via `models.data.add_heroes`, hero list from the fitting splits. Hero 86 was released Oct 16 (validation), hero 87 Oct 20 (test): new heroes get no column. Hero strength drifts (validation edge ≈ 0.84× train's), so hero models are overconfident (ECE ~0.011); retrain on recent data.
 - `models.evaluate.scores` / `scores_by_time` / `reliability` are the shared metrics.
-- **The test split is sealed until the end of Milestone 4.** Use validation for every decision.
+- **The test split (Oct 19 → end of data) was scored at the end of Milestone 4.** It is used now: new comparisons need a newer period.
+- LightGBM uses `n_jobs: 8`: all 16 threads at full load crashed the machine once.
 - `t` is unsigned in the data: convert to float before arithmetic or nearest-value lookups.
 
 ## Commands

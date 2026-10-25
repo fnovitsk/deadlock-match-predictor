@@ -4,7 +4,7 @@ Estimates each team's probability of winning a [Deadlock](https://store.steampow
 
 The model is trained on historical match data: every in-game stat snapshot (net worth, kills, objectives, heroes, game time) becomes a training example labeled with whether that team went on to win. Running the model over every snapshot of one match produces a win-probability curve.
 
-> **Status:** Milestone 3 (baseline model). See the roadmap below.
+> **Status:** Milestone 4 (LightGBM and heroes). See the roadmap below.
 
 ## Roadmap
 
@@ -46,7 +46,7 @@ conda env update -f environment.yml --prune --solver=libmamba
 python -m deadlock_predictor.data.pipeline
 ```
 
-Downloads every ranked 6v6 match since the last major patch (one file per partition in `data/raw/`; reruns skip finished partitions) and writes `data/processed/snapshots.parquet`: one row per match and snapshot time, with Team0-minus-Team1 features, the label, and a chronological train/validation/test split. `notebooks/02_check_pipeline.ipynb` checks the result.
+Downloads every ranked 6v6 match since the last major patch (one file per partition in `data/raw/`; reruns skip finished partitions) and writes `data/processed/snapshots.parquet`: one row per match and snapshot time, with Team0-minus-Team1 features, the label, and a chronological train/validation/test split. It also writes `data/processed/heroes.parquet` (each team's hero picks). `notebooks/02_check_pipeline.ipynb` checks the result.
 
 ## Training the baseline
 
@@ -55,6 +55,17 @@ python -m deadlock_predictor.models.train_baseline
 ```
 
 Fits a ladder of symmetric logistic regressions on the training split, tunes them on validation, and saves the best to `models/`. Validation log loss: 0.549 (always-50% scores 0.693). `notebooks/03_baseline.ipynb` explains the results.
+
+## Training the final model
+
+```bash
+python -m deadlock_predictor.models.train_baseline   # both logistic ladders (with and without heroes)
+python -m deadlock_predictor.models.train_gbm        # LightGBM grids, then picks the final model
+python -m deadlock_predictor.models.refit            # refit baseline and final model on train + validation
+python -m deadlock_predictor.models.evaluate_test    # score both on the test split, once
+```
+
+The final model is LightGBM with hero picks, made exactly symmetric by training on team-swapped copies and averaging both views. Test log loss: **0.523** (baseline 0.547). LightGBM training resumes where it stopped if interrupted. `notebooks/04_lightgbm_heroes.ipynb` explains the results.
 
 ## Project layout
 
