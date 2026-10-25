@@ -40,17 +40,30 @@ def run(settings: dict) -> dict:
     y_val = validation[LABEL].to_numpy()
     print(f"train {len(train):,} rows, validation {len(validation):,} rows, {len(cols)} columns")
 
+    # Each finished fit is saved, so an interrupted run resumes where it stopped.
+    model_path = ROOT / settings["model_path"]
+    runs_dir = model_path.with_name(f"{model_path.stem}_runs")
+    runs_dir.mkdir(parents=True, exist_ok=True)
+
     grid = settings["grid"]
     results, best = [], None
     for values in itertools.product(*grid.values()):
         params = dict(zip(grid, values, strict=True))
+        run_path = runs_dir / ("_".join(f"{k}={v}" for k, v in params.items()) + ".joblib")
         start = time.time()
-        model = SymmetricLGBM(
-            learning_rate=settings["learning_rate"],
-            n_estimators=settings["n_estimators"],
-            early_stopping_rounds=settings["early_stopping_rounds"],
-            **params,
-        ).fit(train[cols], train[LABEL], eval_set=(validation[cols], y_val))
+        if run_path.exists():
+            model = joblib.load(run_path)
+        else:
+            model = SymmetricLGBM(
+                learning_rate=settings["learning_rate"],
+                n_estimators=settings["n_estimators"],
+                early_stopping_rounds=settings["early_stopping_rounds"],
+                n_jobs=settings["n_jobs"],
+                **params,
+            ).fit(train[cols], train[LABEL], eval_set=(validation[cols], y_val))
+            tmp = run_path.with_suffix(".tmp")
+            joblib.dump(model, tmp)
+            tmp.replace(run_path)
         s = scores(y_val, model.predict_proba(validation[cols])[:, 1])
         results.append({"params": params, "trees": model.n_trees_, "validation": s})
         print(
@@ -61,8 +74,6 @@ def run(settings: dict) -> dict:
             best = (params, s, model)
 
     params, s, model = best
-    model_path = ROOT / settings["model_path"]
-    model_path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump({"params": params, "model": model, "hero_ids": ids, "columns": cols}, model_path)
     metrics = {
         "built_at": datetime.now(UTC).isoformat(),
