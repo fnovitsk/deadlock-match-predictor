@@ -5,3 +5,9 @@ baseline:
   tolerance: 0.0005   # keep the simplest rung within this log loss of the best
   model_path: models/baseline.joblib
   metrics_path: models/baseline_metrics.json
+baseline_heroes:              # the same ladder with hero picks (Milestone 4)
+  rungs: [5, 6]
+  C_grid: [0.01, 0.1, 1, 10, 100]
+  tolerance: 0.0005
+  model_path: models/baseline_heroes.joblib
+  metrics_path: models/baseline_heroes_metrics.json
