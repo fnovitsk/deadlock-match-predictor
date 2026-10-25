@@ -75,3 +75,27 @@ Code: `python -m deadlock_predictor.models.train_baseline`. Results: `notebooks/
 **Correlated features make weights hard to read.** Net worth, level and damage move together, so the model can split one effect among them, and some weights look backwards (`level_diff` is negative mid-game). Trust predictions, not individual weights.
 
 **Watch your dtypes.** Snapshot time is stored as an unsigned integer. pandas' "nearest" lookup subtracts index values, and unsigned subtraction wraps around, so it silently picked the wrong neighbor. Converting to float fixed a plot that looked plausible but was wrong.
+
+## Milestone 4 — LightGBM and heroes
+
+Code: `train_gbm`, `refit`, `evaluate_test` in `deadlock_predictor.models`. Results: `notebooks/04_lightgbm_heroes.ipynb`.
+
+**One-hot encoding.** A hero id is a label, not a quantity, so each hero gets its own column (+1 if Team0 picked it, −1 if Team1 did, 0 otherwise). Signed columns are diffs, so they fit the symmetric setup unchanged.
+
+**Information beats model complexity.** Adding heroes cut validation log loss by 0.030; replacing logistic regression with boosted trees cut it by 0.001. The baseline's time-varying weights already captured the structure, and a better model can't use information it isn't given.
+
+**Gradient boosting.** Many small trees fitted in sequence, each to the errors left by the previous ones. `num_leaves` and `min_child_samples` limit how much each tree can fit; early stopping on validation chooses how many trees. Small trees with big leaves won here: the signal is smooth and the noise large.
+
+**Symmetry for trees.** Trees can't be made symmetric by structure, so we trained on every row plus its mirror and predicted ½(g(x) − g(mirror x)) on the logit scale, which is exactly odd. Unlike for the linear model, mirroring changes what trees learn.
+
+**Trees extrapolate in steps.** LightGBM was a bit better than the linear model early (hero combinations) and a bit worse after 35 minutes, where games are rare: a tree predicts a constant from the few rows in its leaf, while a spline weight continues smoothly.
+
+**SHAP values.** They split one prediction into additive contributions per feature; averaging their size shows what drives predictions at each stage. Heroes move predictions ~0.6 logit at every stage; net worth takes over from 15 minutes.
+
+**Drift and new heroes.** Within one patch, hero win-rate edges in validation were only ~0.84× those in train, and two heroes were released in 8 days (one in validation, one in test). Models fitted on older data overstate hero effects (overconfidence: ECE 0.004 → 0.014), and a new hero has no column at all. A deployed model needs regular retraining.
+
+**Refit before the final test.** Once validation has fixed every setting, its matches are just the newest training data. Refitting on train + validation (same C, same tree count) improved the hero model's test log loss from 0.5274 to 0.5232 and its calibration from 0.018 to 0.011.
+
+**Look at the test set once.** All choices (model, settings, refit, what to report) were made before reading it, and `evaluate_test` refuses to run twice. Final test log loss: baseline 0.5472, LightGBM + heroes 0.5232. The gain (0.024) is smaller than on validation (0.031), and almost all of the difference comes from matches with the hero released during the test period: without it, the gain is 0.030, as on validation.
+
+**Change rules before results, not after.** The rule for choosing between models (simplest within 0.0005) was set before training. LightGBM + heroes passed it by a small margin, and we kept the rule rather than overriding it after seeing the numbers.

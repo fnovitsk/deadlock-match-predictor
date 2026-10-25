@@ -22,6 +22,7 @@ sample:
 pipeline:
   raw_dir: data/raw/match_player          # one Parquet file per partition
   snapshots_path: data/processed/snapshots.parquet
+  heroes_path: data/processed/heroes.parquet      # match_id, hero_id, sign (+1 Team0)
   summary_path: data/processed/summary.json   # filter counts and split boundaries
   refresh_latest: 2      # newest partitions still fill up: always re-download them
   split:

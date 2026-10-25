@@ -1,4 +1,4 @@
-"""Build the snapshot table: download → filter → features → split.
+"""Build the snapshot and hero tables: download → filter → features → split.
 
 Run: python -m deadlock_predictor.data.pipeline [--force] [--skip-extract]
 """
@@ -15,10 +15,19 @@ import yaml
 from deadlock_predictor.data.dumps import connect, fetch_manifest
 from deadlock_predictor.data.extract import extract
 from deadlock_predictor.data.split import split_boundaries, split_case
+from deadlock_predictor.features.heroes import build_heroes
 from deadlock_predictor.features.snapshots import build_snapshots, filter_matches
 
 ROOT = Path(__file__).resolve().parents[3]
 CONFIG_PATH = ROOT / "configs" / "data.yaml"
+
+
+def _write(relation, path: Path) -> None:
+    """Write under a temporary name, then rename: a crash never leaves a half-written file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    relation.write_parquet(str(tmp))
+    tmp.replace(path)
 
 
 def run(config: dict, force: bool = False, skip_extract: bool = False) -> dict:
@@ -49,10 +58,9 @@ def run(config: dict, force: bool = False, skip_extract: bool = False) -> dict:
     boundaries = split_boundaries(con, train=fractions["train"], validation=fractions["validation"])
     snapshots = build_snapshots(con).project(f"*, {split_case(boundaries)} AS split")
 
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = out_path.with_suffix(".tmp")
-    snapshots.write_parquet(str(tmp))
-    tmp.replace(out_path)
+    heroes_path = ROOT / settings["heroes_path"]
+    _write(snapshots, out_path)
+    _write(build_heroes(con), heroes_path)
 
     counts = con.sql(
         f"""SELECT split, count(DISTINCT match_id), count(*)
@@ -70,7 +78,7 @@ def run(config: dict, force: bool = False, skip_extract: bool = False) -> dict:
     summary_path = ROOT / settings["summary_path"]
     summary_path.write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps(summary["splits"], indent=2))
-    print(f"Wrote {out_path} and {summary_path}")
+    print(f"Wrote {out_path}, {heroes_path} and {summary_path}")
     return summary
 
 
