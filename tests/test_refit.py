@@ -6,7 +6,7 @@ from deadlock_predictor.models.baseline import DIFFS
 
 
 def fake_split(split, columns=None):
-    rng = np.random.default_rng({"train": 0, "validation": 1}[split])
+    rng = np.random.default_rng({"train": 0, "validation": 1, "test": 2}[split])
     n = 1000
     df = pd.DataFrame({d: rng.normal(0, 3, n) for d in DIFFS})
     df["net_worth_diff"] = rng.normal(0, 5000, n)
@@ -36,3 +36,14 @@ def test_refit_keeps_the_tree_count(monkeypatch):
     saved = {"params": {"num_leaves": 7}, "model": validated, "columns": cols, "hero_ids": []}
     entry = refit.refit(saved, {"learning_rate": 0.05, "n_jobs": 2}, ids=[])
     assert entry["model"].n_trees_ == validated.n_trees_ == 40
+
+
+def test_deploy_refit_uses_every_split(monkeypatch):
+    seen = []
+    monkeypatch.setattr(refit, "load_split", lambda s, c=None: seen.append(s) or fake_split(s))
+    saved = {"rung": 3, "C": 1.0, "model": None, "columns": [], "hero_ids": []}
+    entry = refit.refit(saved, {}, ids=[], splits=refit.ALL_SPLITS)
+    assert seen == ["train", "validation", "test"] and entry["fit_on"] == refit.ALL_SPLITS
+    assert (
+        refit.refit_path({"model_path": "models/gbm.joblib"}, "deploy").name == "gbm_deploy.joblib"
+    )

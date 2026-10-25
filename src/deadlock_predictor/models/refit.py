@@ -1,6 +1,11 @@
 """Refit the baseline and the final model on train + validation, with their chosen settings.
 
-Run: python -m deadlock_predictor.models.refit
+Run: python -m deadlock_predictor.models.refit [--all]
+
+With `--all`, the refit also uses the test split, giving the "deploy" models that draw the
+win-probability curves (Milestone 5): the newest data, and every hero seen so far. They
+can't be scored, since no unused data is left; the test score of the train + validation
+refit is their expected quality.
 
 Validation picked the settings (C, rung, tree settings, tree count). Once they are fixed,
 validation's matches are just more data, and the newest data before test: refitting on
@@ -10,6 +15,7 @@ appears from validation on). No test data is read here.
 
 from __future__ import annotations
 
+import argparse
 import json
 import time
 from pathlib import Path
@@ -25,11 +31,13 @@ from deadlock_predictor.models.data import add_heroes, hero_ids, load_split, sna
 ROOT = Path(__file__).resolve().parents[3]
 CONFIG_PATH = ROOT / "configs" / "model.yaml"
 FIT_SPLITS = ("train", "validation")
+ALL_SPLITS = ("train", "validation", "test")
 
 
-def refit_path(settings: dict) -> Path:
+def refit_path(settings: dict, kind: str = "refit") -> Path:
+    """`models/<cell>_refit.joblib` (train + validation) or `_deploy` (all splits)."""
     path = ROOT / settings["model_path"]
-    return path.with_name(f"{path.stem}_refit{path.suffix}")
+    return path.with_name(f"{path.stem}_{kind}{path.suffix}")
 
 
 def cells(config: dict) -> list[str]:
@@ -38,8 +46,8 @@ def cells(config: dict) -> list[str]:
     return list(dict.fromkeys(["baseline", final["choice"]]))
 
 
-def refit(saved: dict, settings: dict, ids: list[int]) -> dict:
-    """A copy of a saved entry, refit on train + validation with the same settings."""
+def refit(saved: dict, settings: dict, ids: list[int], splits=FIT_SPLITS) -> dict:
+    """A copy of a saved entry, refit on `splits` with the same settings."""
     ids = ids if saved["hero_ids"] else []
     if "rung" in saved:  # logistic regression
         model = baseline.make_model(saved["rung"], saved["C"], ids)
@@ -52,28 +60,30 @@ def refit(saved: dict, settings: dict, ids: list[int]) -> dict:
             **saved["params"],
         )
         columns = gbm.input_columns(ids)
-    data = pd.concat(
-        [load_split(s, snapshot_columns(columns)) for s in FIT_SPLITS], ignore_index=True
-    )
+    data = pd.concat([load_split(s, snapshot_columns(columns)) for s in splits], ignore_index=True)
     if ids:
         data = add_heroes(data, ids)
     model.fit(data[columns], data[LABEL])
     entry = {k: v for k, v in saved.items() if k not in ("model", "columns", "hero_ids")}
-    return {**entry, "model": model, "columns": columns, "hero_ids": ids, "fit_on": FIT_SPLITS}
+    return {**entry, "model": model, "columns": columns, "hero_ids": ids, "fit_on": splits}
 
 
-def run(config: dict) -> None:
-    ids = sorted(set().union(*(hero_ids(s) for s in FIT_SPLITS)))
+def run(config: dict, deploy: bool = False) -> None:
+    splits, kind = (ALL_SPLITS, "deploy") if deploy else (FIT_SPLITS, "refit")
+    ids = sorted(set().union(*(hero_ids(s) for s in splits)))
     for cell in cells(config):
         start = time.time()
         saved = joblib.load(ROOT / config[cell]["model_path"])
-        entry = refit(saved, config[cell], ids)
-        joblib.dump(entry, refit_path(config[cell]))
-        print(f"{cell}: refit on {' + '.join(FIT_SPLITS)} ({time.time() - start:.0f}s)")
+        entry = refit(saved, config[cell], ids, splits)
+        joblib.dump(entry, refit_path(config[cell], kind))
+        print(f"{cell}: refit on {' + '.join(splits)} ({time.time() - start:.0f}s)")
 
 
 def main() -> None:
-    run(yaml.safe_load(CONFIG_PATH.read_text()))
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--all", action="store_true", help="also fit on test: deploy models")
+    args = parser.parse_args()
+    run(yaml.safe_load(CONFIG_PATH.read_text()), deploy=args.all)
 
 
 if __name__ == "__main__":
