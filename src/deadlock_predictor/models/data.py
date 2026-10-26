@@ -50,12 +50,17 @@ def hero_ids(
     return sorted(int(h) for h in heroes.hero_id[heroes.match_id.isin(matches)].unique())
 
 
-def add_heroes(df: pd.DataFrame, ids: list[int], path: Path = HEROES_PATH) -> pd.DataFrame:
+def add_heroes(
+    df: pd.DataFrame, ids: list[int], path: Path = HEROES_PATH, heroes: pd.DataFrame | None = None
+) -> pd.DataFrame:
     """Add one int8 column per hero in `ids`: +1 if Team0 picked it, −1 if Team1, else 0.
 
-    The columns end in `_diff`, so `mirror` negates them like the other diffs.
+    The picks come from the hero table at `path`, or from `heroes` (same columns) for a
+    match that isn't in it. The columns end in `_diff`, so `mirror` negates them like the
+    other diffs.
     """
-    heroes = pd.read_parquet(path)
+    if heroes is None:
+        heroes = pd.read_parquet(path)
     wide = (
         heroes[heroes.match_id.isin(df.match_id.unique()) & heroes.hero_id.isin(ids)]
         .pivot(index="match_id", columns="hero_id", values="sign")
@@ -77,11 +82,16 @@ def snapshot_columns(columns: list[str]) -> list[str]:
     return [c for c in columns if not c.startswith("hero_")]
 
 
-def predict_saved(saved: dict, df: pd.DataFrame) -> np.ndarray:
-    """P(Team0 wins) from a saved model entry (`model`, `columns`, `hero_ids`)."""
+def model_inputs(saved: dict, df: pd.DataFrame, heroes: pd.DataFrame | None = None):
+    """The input table a saved model entry (`model`, `columns`, `hero_ids`) reads."""
     if saved["hero_ids"]:
-        df = add_heroes(df, saved["hero_ids"])
-    return saved["model"].predict_proba(df[saved["columns"]])[:, 1]
+        df = add_heroes(df, saved["hero_ids"], heroes=heroes)
+    return df[saved["columns"]]
+
+
+def predict_saved(saved: dict, df: pd.DataFrame, heroes: pd.DataFrame | None = None) -> np.ndarray:
+    """P(Team0 wins) from a saved model entry; `heroes` as in `add_heroes`."""
+    return saved["model"].predict_proba(model_inputs(saved, df, heroes))[:, 1]
 
 
 def mirror(df: pd.DataFrame) -> pd.DataFrame:

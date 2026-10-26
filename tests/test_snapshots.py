@@ -136,3 +136,16 @@ def test_snapshot_missing_for_a_player_is_dropped():
 def test_output_columns():
     _, df = snapshots(match_rows(1), index=None)
     assert list(df.columns) == (["match_id", "start_time", "duration_s"] + FEATURES + [LABEL])
+
+
+def test_keep_failing_keeps_an_abandoned_match():
+    con = duckdb.connect()
+    raw = pd.DataFrame(match_rows(1, abandon_slot=3))  # noqa: F841
+    strings = ["objectives.team", "objectives.team_objective"]
+    strings += ["mid_boss.team_claimed", "mid_boss.team_killed"]
+    casts = ", ".join(f'"{c}"::VARCHAR[] AS "{c}"' for c in strings)
+    con.sql(f"CREATE TABLE raw AS SELECT * REPLACE ({casts}) FROM raw")
+    assert filter_matches(con)["kept"] == 0
+    report = filter_matches(con, keep_failing=True)
+    assert report["kept"] == 1 and report["no_abandon"] == 1
+    assert len(build_snapshots(con).df()) == 4

@@ -38,6 +38,13 @@ Models (`src/deadlock_predictor/models/`, settings in `configs/model.yaml`):
 - **The test split (Oct 19 → end of data) was scored at the end of Milestone 4.** It is used now: new comparisons need a newer period.
 - LightGBM uses `n_jobs: 8`: all 16 threads at full load crashed the machine once.
 - `t` is unsigned in the data: convert to float before arithmetic or nearest-value lookups.
+- `refit --all` → `*_deploy.joblib` on all splits: what the curves use. Nothing is left to score them on.
+
+Curves (`python -m deadlock_predictor.viz.curve <match_id>` → `reports/curves/`, gitignored):
+- `data.match.match_rows`: local dump first (`local_rows`), else `api.deadlock-api.com/v1/matches/{id}/metadata` converted to dump rows (`api_rows`); `register` loads rows into DuckDB with VARCHAR[] list types, then the training feature code runs unchanged (`filter_matches(keep_failing=True)` keeps a match that fails a filter and reports it).
+- API vs dump: team 0/1 → 'Team0'/'Team1'; `team_objective_id` 0 Core, 1-4 Tier1Lane1-4, 5-8 Tier2Lane1-4, 9 Titan, 10-11 TitanShieldGenerator1-2, 12-15 BarrackBossLane1-4; match_mode 4 = Ranked, game_mode 1 = Normal. The API has no lobby badge: `lobby_badge` recomputes it from players' `initial_display_rank` (mean on the tier·6 + subtier scale, unranked skipped, rounded half up). Features matched the dump on every sampled match.
+- `/v1/matches/recently-fetched` lists recent matches (for fresh, never-seen data).
+- `models.data.predict_saved(saved, df, heroes=...)` takes hero picks directly for matches not in `heroes.parquet`.
 
 ## Commands
 Conda is not on PATH in Claude's shell: use `C:\Users\fnovi\miniconda3\Scripts\conda.exe`. `gh` is not on PATH either: `C:\Program Files\GitHub CLI\gh.exe`.

@@ -4,7 +4,7 @@ Estimates each team's probability of winning a [Deadlock](https://store.steampow
 
 The model is trained on historical match data: every in-game stat snapshot (net worth, kills, objectives, heroes, game time) becomes a training example labeled with whether that team went on to win. Running the model over every snapshot of one match produces a win-probability curve.
 
-> **Status:** Milestone 4 (LightGBM and heroes). See the roadmap below.
+> **Status:** Milestone 5 (win-probability curves). See the roadmap below.
 
 ## Roadmap
 
@@ -66,6 +66,15 @@ python -m deadlock_predictor.models.evaluate_test    # score both on the test sp
 ```
 
 The final model is LightGBM with hero picks, made exactly symmetric by training on team-swapped copies and averaging both views. Test log loss: **0.523** (baseline 0.547). LightGBM training resumes where it stopped if interrupted. `notebooks/04_lightgbm_heroes.ipynb` explains the results.
+
+## Drawing a curve
+
+```bash
+python -m deadlock_predictor.models.refit --all      # once: refit the final model and baseline on every match
+python -m deadlock_predictor.viz.curve <match_id>    # saves reports/curves/<match_id>.png
+```
+
+Works for any ranked 6v6 match: from the local dump if it's there, otherwise fetched from the deadlock-api.com API (including matches played today). The chart shows P(Team0 wins) at each stat snapshot (every 3–5 minutes) for the final model and the baseline, the towers, barracks and mid-boss kills in between, and what moved the prediction since the previous snapshot. `notebooks/05_win_curves.ipynb` shows examples and checks the curves.
 
 ## Project layout
 

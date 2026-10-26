@@ -55,10 +55,14 @@ def _objective_group(type_column: str) -> str:
     return f"CASE {whens} END"
 
 
-def filter_matches(con: duckdb.DuckDBPyConnection, raw: str = "raw") -> dict[str, int]:
+def filter_matches(
+    con: duckdb.DuckDBPyConnection, raw: str = "raw", keep_failing: bool = False
+) -> dict[str, int]:
     """Create table `matches` with the matches that pass every filter.
 
-    Returns how many matches each filter removed (a match can fail several).
+    Returns how many matches failed each filter (a match can fail several). With
+    `keep_failing`, failing matches stay in `matches`: used to draw the curve of one match
+    (with an abandon, say) that training would have left out.
     """
     con.sql(f"""
         CREATE OR REPLACE TEMP TABLE match_checks AS
@@ -86,7 +90,7 @@ def filter_matches(con: duckdb.DuckDBPyConnection, raw: str = "raw") -> dict[str
         CREATE OR REPLACE TEMP TABLE matches AS
         SELECT match_id, start_time, duration_s, winning_team = 'Team0' AS {LABEL}
         FROM match_checks
-        WHERE {" AND ".join(checks)}
+        WHERE {"true" if keep_failing else " AND ".join(checks)}
     """)
     kept = con.sql("SELECT count(*) FROM matches").fetchone()[0]
     return {"matches": removed[0], **dict(zip(checks, removed[1:], strict=True)), "kept": kept}

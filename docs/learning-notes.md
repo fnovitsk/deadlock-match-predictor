@@ -99,3 +99,17 @@ Code: `train_gbm`, `refit`, `evaluate_test` in `deadlock_predictor.models`. Resu
 **Look at the test set once.** All choices (model, settings, refit, what to report) were made before reading it, and `evaluate_test` refuses to run twice. Final test log loss: baseline 0.5472, LightGBM + heroes 0.5232. The gain (0.024) is smaller than on validation (0.031), and almost all of the difference comes from matches with the hero released during the test period: without it, the gain is 0.030, as on validation.
 
 **Change rules before results, not after.** The rule for choosing between models (simplest within 0.0005) was set before training. LightGBM + heroes passed it by a small margin, and we kept the rule rather than overriding it after seeing the numbers.
+
+## Milestone 5 — Win-probability curves
+
+Code: `python -m deadlock_predictor.viz.curve <match_id>`. Results: `notebooks/05_win_curves.ipynb`.
+
+**Training–serving skew.** A model is only as good as the features it gets at prediction time. Matches not in our dump come from the API, which encodes the same data differently (numeric codes, no lobby badge). We converted it to the dump's format so the *same* feature code runs, and checked that both paths give identical features on random matches. A subtle example: Python's `round` rounds 62.5 to 62 (to even), while the data's source rounds half up; one in 20 sampled matches differed until that was fixed.
+
+**Deploy models.** Once every choice is made and the test score recorded, the final model is refit on *all* the data, including test. It can't be scored any more, but it knows the newest heroes and strengths. On matches played after the dump ended, it beat the train + validation version in all three samples we tried, by 0.001–0.014 log loss.
+
+**Explaining a single prediction.** SHAP contributions add up to the logit, so the change between two snapshots splits exactly into what moved it: net worth, fights, objectives, heroes. That's what the curve's lower panel shows.
+
+**Calibration you can see: comebacks.** If a calibrated curve shows 10%, that team should win about 10% of the time from there. Because a curve usually jumps *past* a threshold rather than landing on it, the fair expectation is the probability at the first snapshot below it. On the test split, teams written off at ≤10% won 5.2% of the time, against 5.4% expected. (A calibrated probability is a fair bet whenever you look at it; in probability theory such a process is called a martingale.)
+
+**Small samples swing.** Three samples of ~150 brand-new matches gave baseline log losses of 0.549–0.587. Compare models on the *same* matches; differences between models are much more stable than either score alone, and ECE on a few thousand rows is mostly noise.
