@@ -59,7 +59,7 @@ def refit(saved: dict, settings: dict, ids: list[int], splits=FIT_SPLITS) -> dic
             n_jobs=settings["n_jobs"],
             **saved["params"],
         )
-        columns = gbm.input_columns(ids)
+        columns = gbm.input_columns(ids, live=settings.get("live", False))
     data = pd.concat([load_split(s, snapshot_columns(columns)) for s in splits], ignore_index=True)
     if ids:
         data = add_heroes(data, ids)
@@ -68,10 +68,12 @@ def refit(saved: dict, settings: dict, ids: list[int], splits=FIT_SPLITS) -> dic
     return {**entry, "model": model, "columns": columns, "hero_ids": ids, "fit_on": splits}
 
 
-def run(config: dict, deploy: bool = False) -> None:
+def run(config: dict, deploy: bool = False, only: str | None = None) -> None:
+    """Refit the test cells (and, for deploy, the extra `deploy.cells`), or just `only`."""
     splits, kind = (ALL_SPLITS, "deploy") if deploy else (FIT_SPLITS, "refit")
     ids = sorted(set().union(*(hero_ids(s) for s in splits)))
-    for cell in cells(config):
+    todo = cells(config) + (config["deploy"]["cells"] if deploy else [])
+    for cell in [only] if only else todo:
         start = time.time()
         saved = joblib.load(ROOT / config[cell]["model_path"])
         entry = refit(saved, config[cell], ids, splits)
@@ -82,8 +84,9 @@ def run(config: dict, deploy: bool = False) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--all", action="store_true", help="also fit on test: deploy models")
+    parser.add_argument("--cell", help="refit only this config section")
     args = parser.parse_args()
-    run(yaml.safe_load(CONFIG_PATH.read_text()), deploy=args.all)
+    run(yaml.safe_load(CONFIG_PATH.read_text()), deploy=args.all, only=args.cell)
 
 
 if __name__ == "__main__":
