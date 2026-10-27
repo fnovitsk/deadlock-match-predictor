@@ -4,7 +4,13 @@ import pytest
 from test_gbm import synthetic
 from test_live import game
 
-from deadlock_predictor.app.helpers import history, live_states, live_table, plot_history
+from deadlock_predictor.app.helpers import (
+    history,
+    live_states,
+    live_table,
+    pick_game,
+    plot_history,
+)
 from deadlock_predictor.models.gbm import SymmetricLGBM, input_columns
 
 HEROES = [1, 2, 3, 4]
@@ -27,6 +33,13 @@ def test_live_table_lists_each_game(live_model):
     assert table["souls lead (Team0)"].tolist() == [20_000, 5_000]
     assert table["buildings lead (Team0)"].tolist() == [1, 0]
     assert ((table["P(Team0 wins)"] > 0) & (table["P(Team0 wins)"] < 1)).all()
+
+
+def test_pick_game():
+    assert pick_game(["5", "7"], "") == "5"  # nothing asked: the longest game
+    assert pick_game(["5", "7"], "7") == "7"
+    assert pick_game(["5", "7"], "8") is None  # not live
+    assert pick_game([], "") is None
 
 
 def test_no_games():

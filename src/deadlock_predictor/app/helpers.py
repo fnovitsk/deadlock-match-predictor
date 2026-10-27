@@ -37,6 +37,14 @@ def live_table(states: pd.DataFrame) -> pd.DataFrame:
     return table.sort_values("minute", ascending=False, ignore_index=True)
 
 
+def pick_game(live: list[str], wanted: str) -> str | None:
+    """The game to plot: `wanted` if it is live, the first (longest) game if nothing is
+    wanted, else None."""
+    if not wanted:
+        return live[0] if live else None
+    return wanted if wanted in live else None
+
+
 def history(match_id: int, *frames: pd.DataFrame) -> pd.DataFrame:
     """Every logged state of one game across `frames` (collector log, this session),
     one per poll, in time order."""

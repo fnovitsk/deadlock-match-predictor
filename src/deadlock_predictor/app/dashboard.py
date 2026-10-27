@@ -20,7 +20,13 @@ import requests
 import streamlit as st
 import yaml
 
-from deadlock_predictor.app.helpers import history, live_states, live_table, plot_history
+from deadlock_predictor.app.helpers import (
+    history,
+    live_states,
+    live_table,
+    pick_game,
+    plot_history,
+)
 from deadlock_predictor.data.live import fetch_active
 from deadlock_predictor.live.collect import load
 from deadlock_predictor.models.refit import refit_path
@@ -84,14 +90,19 @@ def live_page(live_model) -> None:
         st.session_state.seen = seen
         st.caption(f"{len(states)} games, updated {pd.Timestamp.now():%H:%M:%S}")
         table = live_table(states)
-        choice = st.selectbox("Game", table.match, format_func=lambda m: f"match {m}")
         st.dataframe(table, hide_index=True, height=250)
-        if choice:
-            past = history(int(choice), load(), seen)
-            fig = plot_history(past, int(choice))
-            st.pyplot(fig)
-            plt.close(fig)
+        choice = pick_game(table.match.tolist(), wanted)
+        if choice is None:
+            st.warning(f"Match {wanted} isn't a ranked 6v6 game in progress right now.")
+            return
+        past = history(int(choice), load(), seen)
+        fig = plot_history(past, int(choice))
+        st.pyplot(fig)
+        plt.close(fig)
 
+    # Outside the fragment: the game list changes every poll, which would reset a widget
+    # inside it.
+    wanted = st.text_input("Match id to follow", placeholder="empty: the longest game").strip()
     board()
 
 
