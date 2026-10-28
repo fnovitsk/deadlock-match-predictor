@@ -21,6 +21,7 @@ import streamlit as st
 import yaml
 
 from deadlock_predictor.app.helpers import (
+    api_error_message,
     history,
     live_states,
     live_table,
@@ -72,7 +73,7 @@ def lookup_page(models) -> None:
         with st.spinner("Loading the match..."):
             m = explore(int(match_id), models)
     except (requests.RequestException, ValueError, KeyError) as error:
-        st.error(f"Couldn't load match {match_id}: {error}")
+        st.error(api_error_message(match_id, error))
         return
     if m.failed:
         st.warning(f"This match fails training filters ({', '.join(m.failed)}): read it with care.")
