@@ -11,6 +11,7 @@ from deadlock_predictor.app.helpers import (
     pick_game,
     plot_history,
 )
+from deadlock_predictor.data.live import PREGAME_S
 from deadlock_predictor.models.gbm import SymmetricLGBM, input_columns
 
 HEROES = [1, 2, 3, 4]
@@ -26,7 +27,7 @@ def live_model():
 
 def test_live_table_lists_each_game(live_model):
     games = [game(7, start=0, nw=(40_000, 20_000), lost1=[1]), game(8, start=600)]
-    states = live_states(games, live_model, now=1500)
+    states = live_states(games, live_model, now=1500 + PREGAME_S)
     table = live_table(states)
     assert table.match.tolist() == ["7", "8"]  # longest game first
     assert table.minute.tolist() == [25, 15]
@@ -52,7 +53,7 @@ def test_history_merges_logs_without_duplicates(live_model):
         [live_states([game(7, start=0)], live_model, now=t) for t in (600, 660, 720)]
     )
     past = history(7, log, session, pd.DataFrame())
-    assert past.t.tolist() == [600, 660, 720]
+    assert past.t.tolist() == [600 - PREGAME_S, 660 - PREGAME_S, 720 - PREGAME_S]
     assert history(9, log).empty
 
 

@@ -24,7 +24,7 @@ import pandas as pd
 import requests
 import yaml
 
-from deadlock_predictor.data.live import heroes_frame
+from deadlock_predictor.data.live import game_time, heroes_frame
 from deadlock_predictor.data.match import api_rows, fetch_match
 from deadlock_predictor.features.snapshots import LABEL
 from deadlock_predictor.live.collect import LIVE_DIR, load
@@ -108,6 +108,10 @@ def run(config: dict, out_dir: Path = LIVE_DIR) -> dict:
     states = load(out_dir)
     if states.empty:
         raise SystemExit("No live states logged: run `python -m deadlock_predictor.live.collect`")
+    # Recompute the game clock from the raw times, so logs written before PREGAME_S existed
+    # are scored the same way as new ones.
+    elapsed = (states.polled_at - states.start_time).dt.total_seconds()
+    states["t"] = [game_time(e, 0) for e in elapsed]
     cached = pd.read_parquet(MATCHES_PATH) if MATCHES_PATH.exists() else None
     rows = fetch_finished(states.match_id.unique(), cached)
     if rows.empty:

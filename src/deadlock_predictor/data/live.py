@@ -22,6 +22,10 @@ from deadlock_predictor.features.snapshots import OBJECTIVE_GROUPS
 
 ACTIVE_URL = "https://api.deadlock-api.com/v1/matches/active"
 OBJ_COLUMNS = [f"obj_{g}_diff" for g in OBJECTIVE_GROUPS.values()]
+# `start_time` is ~210 s before the game clock starts (the pre-game). Measured by
+# `live.score`'s clock check on 413 finished games: live team net worth matched the
+# post-game snapshots within 6% at this offset, against 25% without it.
+PREGAME_S = 210
 
 
 def _group(name: str) -> str | None:
@@ -56,6 +60,11 @@ def objectives_lost(mask: int) -> dict[str, int]:
     return lost
 
 
+def game_time(now: float, start_time: float) -> float:
+    """Seconds on the game clock: time since `start_time`, minus the pre-game."""
+    return max(0.0, now - start_time - PREGAME_S)
+
+
 def live_state(game: dict, now: float | None = None) -> dict:
     """One row for a game in progress: the raw values and the model inputs.
 
@@ -77,7 +86,7 @@ def live_state(game: dict, now: float | None = None) -> dict:
         "heroes_team0": heroes[0],
         "heroes_team1": heroes[1],
         "abandoned": sum(bool(p.get("abandoned")) for p in game["players"]),
-        "t": float(now - game["start_time"]),
+        "t": game_time(now, game["start_time"]),
         "net_worth_diff": float(teams[0]["net_worth"] - teams[1]["net_worth"]),
         **{f"obj_{g}_diff": float(lost1[g] - lost0[g]) for g in OBJECTIVE_GROUPS.values()},
     }

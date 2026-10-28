@@ -1,6 +1,6 @@
 import pandas as pd
 
-from deadlock_predictor.data.live import heroes_frame, live_state, objectives_lost
+from deadlock_predictor.data.live import PREGAME_S, heroes_frame, live_state, objectives_lost
 from deadlock_predictor.live.collect import append, load
 
 ALL_STANDING = 0xFFFF
@@ -34,7 +34,7 @@ def test_objectives_lost_counts_groups():
 
 def test_live_state_signs_and_time():
     state = live_state(game(lost0=[1], lost1=[1, 3, 5]), now=1900)
-    assert state["t"] == 900
+    assert state["t"] == 900 - PREGAME_S  # game clock, not time since start_time
     assert state["net_worth_diff"] == 5000
     # Team1 lost two Tier 1s and a Tier 2, Team0 one Tier 1: good for Team0.
     assert state["obj_tier1_diff"] == 1 and state["obj_tier2_diff"] == 1
@@ -63,4 +63,6 @@ def test_append_keeps_one_row_per_poll(tmp_path):
     assert append(first, path) == 2
     again = pd.DataFrame([live_state(game(), now=1900), live_state(game(), now=1960)])
     assert append(again, path) == 3  # the repeated (match 7, 1900) row is kept once
+    assert len(load(tmp_path)) == 3
+    first.to_parquet(tmp_path / "scored.parquet")  # the scorer's output: not a poll log
     assert len(load(tmp_path)) == 3

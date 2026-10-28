@@ -47,8 +47,8 @@ def poll(out_dir: Path = LIVE_DIR) -> int:
 
 
 def load(out_dir: Path = LIVE_DIR) -> pd.DataFrame:
-    """Every logged state."""
-    files = sorted(out_dir.glob("*.parquet"))
+    """Every logged state: the dated poll logs, not the scorer's files next to them."""
+    files = sorted(out_dir.glob("????-??-??.parquet"))
     if not files:
         return pd.DataFrame()
     return pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
