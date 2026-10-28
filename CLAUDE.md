@@ -43,6 +43,7 @@ Models (`src/deadlock_predictor/models/`, settings in `configs/model.yaml`):
 Curves (`python -m deadlock_predictor.viz.curve <match_id>` → `reports/curves/`, gitignored):
 - `data.match.match_rows`: local dump first (`local_rows`), else `api.deadlock-api.com/v1/matches/{id}/metadata` converted to dump rows (`api_rows`); `register` loads rows into DuckDB with VARCHAR[] list types, then the training feature code runs unchanged (`filter_matches(keep_failing=True)` keeps a match that fails a filter and reports it).
 - API vs dump: team 0/1 → 'Team0'/'Team1'; `team_objective_id` 0 Core, 1-4 Tier1Lane1-4, 5-8 Tier2Lane1-4, 9 Titan, 10-11 TitanShieldGenerator1-2, 12-15 BarrackBossLane1-4; match_mode 4 = Ranked, game_mode 1 = Normal. The API has no lobby badge: `lobby_badge` recomputes it from players' `initial_display_rank` (mean on the tier·6 + subtier scale, unranked skipped, rounded half up). Features matched the dump on every sampled match.
+- Events use the in-game names (`viz.curve.EVENT_NAMES`): Tier1 = Lane Guardian, Tier2 = Walker, BarrackBoss = Base Guardian, TitanShieldGenerator = Shrine, Titan = Patron Downed. Team0 is most likely the Hidden King and Team1 the Archmother (deadlock-api.com lists them in that order, with the same small side edge as Team0); not confirmed in the API docs.
 - `/v1/matches/recently-fetched` lists recent matches (for fresh, never-seen data).
 - `models.data.predict_saved(saved, df, heroes=...)` takes hero picks directly for matches not in `heroes.parquet`.
 
