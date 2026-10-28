@@ -61,6 +61,10 @@ Match explorer (M7):
 - `features_at` equals the training rows at snapshots (tested). Pass `stats` so building souls (`gold_boss`) step in at the event (`bounty_steps`): without it, early buildings move the curve the wrong way (mediator effect).
 - Fights (`viz.fights`): `configs/model.yaml` → `explorer:` (20 s, 3,000 units, 3+ deaths).
 - Hero and item names: `data.assets` (`hero_name`, `item_name`) from `api.deadlock-api.com/v1/assets/heroes` and `/items`, cached in `data/assets/` (delete to refresh after a game update). `assets.deadlock-api.com` no longer exists. `/v1/assets/map` has the minimap image and radius.
+- Match page (M8): `app/match_page.py` (scoreboard HTML, time range in `st.session_state["range_<id>"]`, tabs), charts in `viz/charts.py` (all styled with `viz.theme`'s `deadlock_dark` template; `.streamlit/config.toml` sets the dark page), `viz/moments.py`, `viz/map_replay.py`.
+- `data.assets`: `hero(id)` (name, `style_hex` colour, portrait/card/minimap data URIs), `item(id)` (tier 1-5, cost, slot type, icon; purchases also include ability unlocks, `shop=False`), `rank(badge)`, `map_info()` (minimap + a dark-tinted copy, radius 10,752; image spans ±radius, y up). Images cached in `data/assets/images/`.
+- The asset `objective_positions` are wrong for the minimap: building positions come from `configs/buildings.yaml` (estimated; regenerate with `python -m deadlock_predictor.viz.map_replay`).
+- Big Plotly animations: build frames as plain dicts (validation dominates the time).
 - Plotly shapes on a subplot with no traces yet are dropped: pass `exclude_empty_subplots=False`. Static PNGs for checking need `kaleido` (install with `pip --target` into the scratchpad, not the env).
 
 ## Commands

@@ -4,7 +4,7 @@ Estimates each team's probability of winning a [Deadlock](https://store.steampow
 
 The model is trained on historical match data: every in-game stat snapshot (net worth, kills, objectives, heroes, game time) becomes a training example labeled with whether that team went on to win. Running the model over every snapshot of one match produces a win-probability curve.
 
-> **Status:** Milestone 7 (match explorer). See the roadmap below.
+> **Status:** Milestone 8 (match page UI). See the roadmap below.
 
 ## Roadmap
 
@@ -18,6 +18,7 @@ The model is trained on historical match data: every in-game stat snapshot (net 
 | 5 | Win-probability curves | Plot for any match ID |
 | 6 | Dashboard and live predictions | Streamlit app, live model, collector and scorer |
 | 7 | Match explorer | Interactive per-player view of a match |
+| 8 | Match page UI | Scoreboard, key moments, player and fight tabs, map replay |
 
 ## Setup
 
@@ -96,17 +97,20 @@ python -m deadlock_predictor.live.score                   # after they finish: s
 
 On 421 games: live log loss **0.503**, well calibrated. `notebooks/06_live.ipynb` explains the results, including a 3.5-minute clock offset in the live data.
 
-## Match explorer
+## Match page
 
-The dashboard's **Match lookup** shows one interactive figure per match, on a shared time axis:
-- **win probability** at every stat snapshot and at every building, mid-boss and teamfight, with buildings labelled for the team that took them;
-- **what moved it** (the model's contributions, grouped);
-- each player's **souls or level**, and the team souls lead;
-- each player's **kills, deaths (and time dead), items and buffs**.
+The dashboard's **Match lookup** (dark theme) shows, for any ranked 6v6 match:
+- **Scoreboard:** hero portraits with each player's K/D/A, souls, level, hero damage and healing, the result and the lobby's rank.
+- **Win probability:** at every stat snapshot and at every building, mid-boss and teamfight. Fights are shaded, and hovering shows the score and souls lead at that moment. Under it, what moved each step.
+- **Key moments:** the biggest swings, what caused them, and a button to zoom there.
+- **One time range** that zooms every chart together.
+- **Players tab:** a timeline per hero, with kills (and a line to each victim), deaths and time dead, item icons, and buffs; each player's souls, level, damage or healing in their hero's colour; final builds.
+- **Fights tab:** a card per fight, with a minimap of where it happened, who died, and how it moved the odds; plus who killed whom.
+- **Map replay:** the match animated on the real minimap, with players, deaths and buildings as they fall.
 
-Below the figure: a **map** of everyone at a chosen minute, and **teamfight** and **player** tables. Between stat snapshots, souls and other stats are interpolated, with building souls added when the building falls. At the snapshots themselves, the curve is exactly the trained model. `notebooks/07_match_explorer.ipynb` checks the curve points and walks through a stomp and a comeback.
+Between stat snapshots, souls and other stats are interpolated, with building souls added when the building falls. At the snapshots themselves, the curve is exactly the trained model. `notebooks/07_match_explorer.ipynb` checks the curve points and walks through a stomp and a comeback.
 
-Match details come from the deadlock-api.com API and are cached in `data/matches/`. Matches it hasn't processed yet are fetched from Steam, which allows only a few requests per hour. Hero and item names come from the API's `/v1/assets` (cached in `data/assets/`).
+Match details come from the deadlock-api.com API and are cached in `data/matches/`. Matches it hasn't processed yet are fetched from Steam, which allows only a few requests per hour. Hero, item and rank names and images, and the minimap, come from the API's `/v1/assets` (cached in `data/assets/`). Building positions on the map are estimated from the data (`configs/buildings.yaml`; `python -m deadlock_predictor.viz.map_replay` re-estimates them).
 
 ## Project layout
 

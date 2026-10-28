@@ -145,3 +145,28 @@ Code: `viz/explorer.py` (dashboard **Match lookup**), `viz/timeline.py`, `viz/fi
 **Fights act through souls.** Fights move the curve toward their winner, but only slightly at the time (~0.02 for 4+ deaths): their value reaches the model through the souls they give, which interpolation spreads out. Stepping kill souls (`gold_player`) in at each kill, like building souls, is the next improvement.
 
 **A 2% team winning isn't a model failure by itself.** One match went from 2% (at exact snapshot points) to a win. A calibrated 2% should happen 1 time in 50; calibration is checked on many matches (notebook 05), not argued from one.
+
+## Milestone 8 — Match page UI
+
+Code: `app/match_page.py`, `viz/charts.py`, `viz/map_replay.py`, `viz/moments.py`, `viz/theme.py`.
+
+**One question per chart.** The M7 figure stacked four rows into one image. The page now gives each question its own chart, at a readable size:
+- who's winning, and when it changed (the curve);
+- why (what moved it, key moments);
+- who did what (the player timeline);
+- where (the map).
+
+One shared time range keeps them in sync, which is what the single figure was for.
+
+**Encodings.**
+- **Side → colour:** amber for the Hidden King, sapphire for the Archmother.
+- **Player → the hero's own colour:** 12 colours you can still tell apart.
+- **Event type → marker shape:** ● kill, ✕ death, item icon, ◆ buff.
+- **Size → importance:** big icons only for items of 3,200+ souls; ticks for the rest.
+- **Lines connect cause and effect:** the kill web draws each kill from killer to victim.
+
+**Check the map before you trust it.** The minimap image lined up with player positions exactly, so every street was walked. The asset's own building positions didn't line up at all. So buildings are placed where the data says they fall: the centre of the attackers' group in the 10 s before each building dies, then the densest group of those estimates across 32 matches. Taking the densest group rather than the mean ignores matches where the attackers' main group was elsewhere. That's the same "agreement over averaging" idea as fight clustering.
+
+**Summaries that explain themselves.** Key moments merge curve steps within 60 s, rank them by how much they moved P, and name the cause from the model's own contributions ("mostly net worth, objectives"). It's the model's explanation, not ground truth. But it's the same SHAP decomposition that adds up exactly to the curve.
+
+**Performance is part of the design.** The replay has 561 frames. Building them as validated Plotly objects took 12 s. Plain dicts plus positions held as a players × seconds array take 3 s, and the replay is cached per start time. Images are embedded as data URIs, so the page doesn't depend on the asset host once cached.
