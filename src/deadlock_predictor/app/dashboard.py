@@ -73,8 +73,15 @@ def live_page(live_model) -> None:
         "(game time, souls, buildings, heroes), so it is less sure than the post-game "
         f"curves. Refreshes every {REFRESH_S} s."
     )
-    if "seen" not in st.session_state:
-        st.session_state.seen = pd.DataFrame()
+    st.session_state.setdefault("seen", pd.DataFrame())
+    st.session_state.setdefault("shown", [])  # match ids in the order the table showed them
+
+    def clicked():
+        # Row positions refer to the table as the user saw it (`shown`), not to the next
+        # poll's order. Copying the match id into the box makes both ways of choosing agree.
+        rows = st.session_state.games.selection.rows
+        if rows:
+            st.session_state.follow = st.session_state.shown[rows[0]]
 
     @st.fragment(run_every=REFRESH_S)
     def board():
@@ -88,21 +95,43 @@ def live_page(live_model) -> None:
             return
         seen = pd.concat([st.session_state.seen, states], ignore_index=True)
         st.session_state.seen = seen
-        st.caption(f"{len(states)} games, updated {pd.Timestamp.now():%H:%M:%S}")
         table = live_table(states)
-        st.dataframe(table, hide_index=True, height=250)
-        choice = pick_game(table.match.tolist(), wanted)
-        if choice is None:
-            st.warning(f"Match {wanted} isn't a ranked 6v6 game in progress right now.")
-            return
-        past = history(int(choice), load(), seen)
-        fig = plot_history(past, int(choice))
-        st.pyplot(fig)
-        plt.close(fig)
+        st.session_state.shown = table.match.tolist()
 
-    # Outside the fragment: the game list changes every poll, which would reset a widget
-    # inside it.
-    wanted = st.text_input("Match id to follow", placeholder="empty: the longest game").strip()
+        left, right = st.columns([2, 3])
+        with left:
+            wanted = st.text_input(
+                "Match id", key="follow", placeholder="click a game, or type an id"
+            ).strip()
+            st.caption(f"{len(states)} games, updated {pd.Timestamp.now():%H:%M:%S}")
+            st.dataframe(
+                table,
+                key="games",
+                hide_index=True,
+                height=480,
+                on_select=clicked,
+                selection_mode="single-row",
+            )
+        with right:
+            choice = pick_game(st.session_state.shown, wanted)
+            if choice is None:
+                past = history(int(wanted), load(), seen) if wanted.isdigit() else pd.DataFrame()
+                if past.empty:
+                    st.warning(f"Match {wanted} isn't a ranked 6v6 game in progress right now.")
+                    return
+                # Seen live earlier: keep its curve so far.
+                st.info(f"Match {wanted} has ended: its full curve is in Match lookup.")
+                choice = wanted
+            past = history(int(choice), load(), seen)
+            fig = plot_history(past, int(choice))
+            st.pyplot(fig)
+            plt.close(fig)
+            if len(past) < 3:
+                st.caption(
+                    "The live API only gives the current state: the curve starts when you "
+                    "start watching and gains a point every minute."
+                )
+
     board()
 
 
