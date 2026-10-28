@@ -4,7 +4,7 @@ Estimates each team's probability of winning a [Deadlock](https://store.steampow
 
 The model is trained on historical match data: every in-game stat snapshot (net worth, kills, objectives, heroes, game time) becomes a training example labeled with whether that team went on to win. Running the model over every snapshot of one match produces a win-probability curve.
 
-> **Status:** Milestone 5 (win-probability curves). See the roadmap below.
+> **Status:** Milestone 6 (dashboard and live predictions). See the roadmap below.
 
 ## Roadmap
 
@@ -16,7 +16,8 @@ The model is trained on historical match data: every in-game stat snapshot (net 
 | 3 | Baseline model | Logistic regression + calibration |
 | 4 | Better model | Richer features + LightGBM |
 | 5 | Win-probability curves | Plot for any match ID |
-| 6 | (Later) | Dashboard, live predictions |
+| 6 | Dashboard and live predictions | Streamlit app, live model, collector and scorer |
+| 7 | Match explorer | Interactive per-player view of a match |
 
 ## Setup
 
@@ -74,7 +75,26 @@ python -m deadlock_predictor.models.refit --all      # once: refit the final mod
 python -m deadlock_predictor.viz.curve <match_id>    # saves reports/curves/<match_id>.png
 ```
 
-Works for any ranked 6v6 match: from the local dump if it's there, otherwise fetched from the deadlock-api.com API (including matches played today). The chart shows P(Team0 wins) at each stat snapshot (every 3–5 minutes) for the final model and the baseline, the towers, barracks and mid-boss kills in between, and what moved the prediction since the previous snapshot. `notebooks/05_win_curves.ipynb` shows examples and checks the curves.
+Works for any ranked 6v6 match: from the local dump if it's there, otherwise fetched from the deadlock-api.com API (including matches played today). The chart shows P(Hidden King wins) at each stat snapshot (every 3–5 minutes) for the final model and the baseline, the buildings (Lane Guardians, Walkers, Base Guardians, Shrines, Patron) and mid-boss claims in between, and what moved the prediction since the previous snapshot. `notebooks/05_win_curves.ipynb` shows examples and checks the curves.
+
+## Dashboard and live games
+
+```bash
+python -m deadlock_predictor.models.train_gbm --section gbm_live   # once: the live model
+python -m deadlock_predictor.models.refit --all                    # once: deploy versions
+streamlit run src/deadlock_predictor/app/dashboard.py
+```
+
+Two pages: **Match lookup** draws the curve of any finished match, and **Live games** lists ranked games in progress with the live model's win probability, refreshed every minute. Click a game or type a match id to follow its curve. The live model sees only what a game in progress shows (souls, buildings, heroes): validation log loss 0.526 against 0.518 for the full model.
+
+To check live predictions against real results:
+
+```bash
+python -m deadlock_predictor.live.collect --minutes 120   # log ranked games in progress once a minute
+python -m deadlock_predictor.live.score                   # after they finish: score every logged prediction
+```
+
+On 421 games: live log loss **0.503**, well calibrated. `notebooks/06_live.ipynb` explains the results, including a 3.5-minute clock offset in the live data.
 
 ## Project layout
 
@@ -84,7 +104,7 @@ data/                    local data, not committed (raw/, interim/, processed/)
 docs/learning-notes.md   ML concepts and decisions, milestone by milestone
 models/                  trained models, not committed
 notebooks/               exploration; imports reusable code from src/
-src/deadlock_predictor/  package: data/, features/, models/, viz/
+src/deadlock_predictor/  package: data/, features/, models/, viz/, live/, app/
 tests/                   pytest
 ```
 

@@ -35,6 +35,18 @@ gbm_heroes:
     min_child_samples: [200, 2000]
   model_path: models/gbm_heroes.joblib
   metrics_path: models/gbm_heroes_metrics.json
+gbm_live:                     # Milestone 6: only what live games show (models.gbm.LIVE_COLUMNS)
+  heroes: true
+  live: true
+  learning_rate: 0.05
+  n_estimators: 3000
+  early_stopping_rounds: 100
+  n_jobs: 8
+  grid:
+    num_leaves: [31, 127]
+    min_child_samples: [200, 2000]
+  model_path: models/gbm_live.joblib
+  metrics_path: models/gbm_live_metrics.json
 
 # The final pick among the four cells, simplest first.
 final:
@@ -45,3 +57,7 @@ final:
 # One-time test evaluation (end of Milestone 4): python -m deadlock_predictor.models.evaluate_test
 test:
   path: models/test_metrics.json
+
+# Deploy refit (refit --all): the test cells plus these.
+deploy:
+  cells: [gbm_live]

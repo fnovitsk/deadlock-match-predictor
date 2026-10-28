@@ -36,7 +36,7 @@ def split_boundaries(
             SELECT min(start_time) FILTER (i >= round(n * {train})),
                    min(start_time) FILTER (i >= round(n * {train + validation}))
             FROM ordered"""
-    ).fetchone()
+    ).fetchall()[0]
 
 
 def split_case(boundaries: tuple[datetime, datetime], column: str = "start_time") -> str:

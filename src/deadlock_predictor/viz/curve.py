@@ -30,6 +30,9 @@ from deadlock_predictor.models.refit import cells, refit_path
 ROOT = Path(__file__).resolve().parents[3]
 CONFIG_PATH = ROOT / "configs" / "model.yaml"
 OUT_DIR = ROOT / "reports" / "curves"
+# Team0 is (most likely) the Hidden King, Team1 the Archmother: data keeps Team0/Team1,
+# plots show the in-game names.
+TEAM_NAMES = {"Team0": "Hidden King", "Team1": "Archmother"}
 TEAM_COLORS = {"Team0": "tab:orange", "Team1": "tab:blue"}
 
 # Feature groups for "what moved the probability" (SHAP contributions summed per group).
@@ -42,7 +45,24 @@ GROUPS = {
     "heroes": [],  # every hero_<id>_diff column
     "time & rank": ["t", "badge_mean"],
 }
-SHORT = {"tier1": "T1", "tier2": "T2", "barracks": "B", "shield_gen": "SG", "titan": "Ti"}
+# Event names as players know them (the data's names: Tier1, Tier2, BarrackBoss,
+# TitanShieldGenerator, Titan), and the short label drawn on the curve.
+EVENT_NAMES = {
+    "tier1": "Lane Guardian",
+    "tier2": "Walker",
+    "barracks": "Base Guardian",
+    "shield_gen": "Shrine",
+    "titan": "Patron Downed",
+}
+MID_BOSS = "Mid-boss"
+EVENT_LABELS = {
+    "Lane Guardian": "LG",
+    "Walker": "W",
+    "Base Guardian": "BG",
+    "Shrine": "Sh",
+    "Patron Downed": "PD",
+    MID_BOSS: "MB",
+}
 
 
 def load_models(config: dict | None = None) -> dict[str, dict]:
@@ -108,12 +128,12 @@ def match_events(rows: pd.DataFrame) -> pd.DataFrame:
             None,
         )
         if t > 0 and group:
-            events.append({"t": float(t), "kind": SHORT[group], "team": other[owner]})
+            events.append({"t": float(t), "kind": EVENT_NAMES[group], "team": other[owner]})
     for team, t in zip(
         first["mid_boss.team_claimed"], first["mid_boss.destroyed_time_s"], strict=True
     ):
         if t > 0:
-            events.append({"t": float(t), "kind": "MB", "team": team})
+            events.append({"t": float(t), "kind": MID_BOSS, "team": team})
     return pd.DataFrame(events, columns=["t", "kind", "team"]).sort_values("t", ignore_index=True)
 
 
@@ -151,7 +171,7 @@ def plot_curve(curve, events, match_id, winner, duration_s, note="", fig=None):
         ax.text(
             e.t / 60,
             y,
-            e.kind,
+            EVENT_LABELS[e.kind],
             color=TEAM_COLORS[e.team],
             fontsize=7,
             ha="center",
@@ -160,13 +180,21 @@ def plot_curve(curve, events, match_id, winner, duration_s, note="", fig=None):
         )
     end = duration_s / 60
     ax.axvline(end, color=TEAM_COLORS.get(winner, "grey"), lw=2)
-    ax.text(end, 0.5, f" {winner} wins", color=TEAM_COLORS.get(winner, "grey"), va="center")
+    ax.text(
+        end,
+        0.5,
+        f" {TEAM_NAMES.get(winner, winner)} wins",
+        color=TEAM_COLORS.get(winner, "grey"),
+        va="center",
+    )
     ax.set(
         ylim=(0, 1),
         xlim=(0, end + 2),
-        ylabel="P(Team0 wins)",
-        title=f"Match {match_id}{note}",
+        ylabel="P(Hidden King wins)",
     )
+    ax.set_title(f"Match {match_id}{note}", pad=16)
+    key = "   ".join(f"{label} {name}" for name, label in EVENT_LABELS.items())
+    ax.text(0.5, 1.01, key, transform=ax.transAxes, ha="center", fontsize=7, color="grey")
     ax.legend(loc="lower left", fontsize=8)
     if has_groups:
         bx = fig.add_subplot(grid[1], sharex=ax)
@@ -187,7 +215,7 @@ def plot_curve(curve, events, match_id, winner, duration_s, note="", fig=None):
         bx.set(
             ylim=(-span, span),
             xlabel="minute",
-            ylabel="Δ logit since last point\n(+ = toward Team0)",
+            ylabel="Δ logit since last point\n(+ = toward Hidden King)",
         )
         bx.legend(fontsize=7, loc="upper left", bbox_to_anchor=(1.01, 1))
     else:

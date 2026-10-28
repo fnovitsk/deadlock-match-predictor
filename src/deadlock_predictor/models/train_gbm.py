@@ -26,13 +26,13 @@ from deadlock_predictor.models.gbm import SymmetricLGBM, input_columns
 
 ROOT = Path(__file__).resolve().parents[3]
 CONFIG_PATH = ROOT / "configs" / "model.yaml"
-SECTIONS = ("gbm", "gbm_heroes")
+SECTIONS = ("gbm", "gbm_heroes", "gbm_live")
 
 
 def run(settings: dict) -> dict:
     """Fit one grid (a section of the model config) and save its best model."""
     ids = hero_ids() if settings["heroes"] else []
-    cols = input_columns(ids)
+    cols = input_columns(ids, live=settings.get("live", False))
     train = load_split("train", snapshot_columns(cols))
     validation = load_split("validation", snapshot_columns(cols))
     if ids:

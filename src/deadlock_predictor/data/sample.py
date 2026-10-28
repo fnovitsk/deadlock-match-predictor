@@ -54,7 +54,7 @@ def save_sample(
     }
     rel = con.sql(query, params=params)
     rel.write_parquet(str(out_path))
-    return con.sql(f"SELECT count(*) FROM '{out_path.as_posix()}'").fetchone()[0]
+    return con.sql(f"SELECT count(*) FROM '{out_path.as_posix()}'").fetchall()[0][0]
 
 
 def main() -> None:

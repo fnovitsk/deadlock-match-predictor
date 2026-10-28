@@ -77,3 +77,15 @@ def test_mirror_features_keeps_whole_game_columns(test_rows):
     m = mirror_features(test_rows)
     assert (m.t == test_rows.t).all() and (m.badge_mean == test_rows.badge_mean).all()
     assert (m.net_worth_diff == -test_rows.net_worth_diff).all()
+
+
+def test_live_columns_are_a_symmetric_subset():
+    from deadlock_predictor.models.gbm import LIVE_COLUMNS
+
+    live = input_columns(HEROES, live=True)
+    assert set(LIVE_COLUMNS) < set(input_columns())
+    assert "kills_diff" not in live and "badge_mean" not in live
+    data, rows = synthetic(3000, 0), synthetic(500, 1)[live]
+    model = SymmetricLGBM(num_leaves=7, n_estimators=50).fit(data[live], data.team0_win)
+    p = model.predict_proba(rows)[:, 1] + model.predict_proba(mirror_features(rows))[:, 1]
+    np.testing.assert_allclose(p, 1.0, atol=1e-9)

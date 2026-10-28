@@ -21,11 +21,15 @@ from deadlock_predictor.models.baseline import DIFFS
 from deadlock_predictor.models.data import diff_columns, hero_column
 
 BASE_COLUMNS = ["t", *DIFFS, "badge_mean"]
+# What a game in progress shows (`data.live`): no kills, levels, damage, mid-boss or rank.
+LIVE_COLUMNS = ["t", "net_worth_diff", *(d for d in DIFFS if d.startswith("obj_"))]
 
 
-def input_columns(hero_ids=()) -> list[str]:
-    """Columns the trees read: the baseline's diffs, game time, lobby rank, and heroes."""
-    return [*BASE_COLUMNS, *(hero_column(h) for h in hero_ids)]
+def input_columns(hero_ids=(), live: bool = False) -> list[str]:
+    """Columns the trees read: the baseline's diffs, game time, lobby rank, and heroes; or,
+    for the live model, only what live games show."""
+    base = LIVE_COLUMNS if live else BASE_COLUMNS
+    return [*base, *(hero_column(h) for h in hero_ids)]
 
 
 def mirror_features(X: pd.DataFrame) -> pd.DataFrame:

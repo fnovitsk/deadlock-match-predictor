@@ -85,14 +85,14 @@ def filter_matches(
         "SELECT count(*), "
         + ", ".join(f"count(*) FILTER (NOT {c})" for c in checks)
         + " FROM match_checks"
-    ).fetchone()
+    ).fetchall()[0]
     con.sql(f"""
         CREATE OR REPLACE TEMP TABLE matches AS
         SELECT match_id, start_time, duration_s, winning_team = 'Team0' AS {LABEL}
         FROM match_checks
         WHERE {"true" if keep_failing else " AND ".join(checks)}
     """)
-    kept = con.sql("SELECT count(*) FROM matches").fetchone()[0]
+    kept = con.sql("SELECT count(*) FROM matches").fetchall()[0][0]
     return {"matches": removed[0], **dict(zip(checks, removed[1:], strict=True)), "kept": kept}
 
 

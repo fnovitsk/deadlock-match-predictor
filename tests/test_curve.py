@@ -66,18 +66,22 @@ def test_failed_filters_are_reported():
 
 def test_events_name_the_scoring_team():
     events = match_events(api_rows(api_match()))
-    # Team1's Tier 1 falls at 400 s (Team0 scored), the mid-boss claim at 650 s goes to
-    # Team0, and Team0's shield generator falls at 700 s (Team1 scored).
+    # Team1's Lane Guardian (Tier 1) falls at 400 s (Team0 scored), the mid-boss claim at
+    # 650 s goes to Team0, and Team0's Shrine (shield generator) falls at 700 s (Team1 scored).
     assert events.to_dict("list") == {
         "t": [400.0, 650.0, 700.0],
-        "kind": ["T1", "MB", "SG"],
+        "kind": ["Lane Guardian", "Mid-boss", "Shrine"],
         "team": ["Team0", "Team0", "Team1"],
     }
 
 
 def test_close_labels_get_separate_rows():
     events = pd.DataFrame(
-        {"t": [600, 620, 640, 900, 610], "kind": ["T1"] * 5, "team": ["Team0"] * 4 + ["Team1"]}
+        {
+            "t": [600, 620, 640, 900, 610],
+            "kind": ["Lane Guardian"] * 5,
+            "team": ["Team0"] * 4 + ["Team1"],
+        }
     ).sort_values("t", ignore_index=True)
     # Team0 at 600, 620, 640 s (within a minute): rows 0, 1, 2; Team1 at 610 s: row 0;
     # Team0 at 900 s: back to row 0.

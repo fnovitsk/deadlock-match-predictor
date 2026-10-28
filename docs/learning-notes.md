@@ -113,3 +113,19 @@ Code: `python -m deadlock_predictor.viz.curve <match_id>`. Results: `notebooks/0
 **Calibration you can see: comebacks.** If a calibrated curve shows 10%, that team should win about 10% of the time from there. Because a curve usually jumps *past* a threshold rather than landing on it, the fair expectation is the probability at the first snapshot below it. On the test split, teams written off at ≤10% won 5.2% of the time, against 5.4% expected. (A calibrated probability is a fair bet whenever you look at it; in probability theory such a process is called a martingale.)
 
 **Small samples swing.** Three samples of ~150 brand-new matches gave baseline log losses of 0.549–0.587. Compare models on the *same* matches; differences between models are much more stable than either score alone, and ECE on a few thousand rows is mostly noise.
+
+## Milestone 6 — Dashboard and live predictions
+
+Code: `streamlit run src/deadlock_predictor/app/dashboard.py`, `python -m deadlock_predictor.live.collect`, `python -m deadlock_predictor.live.score`. Results: `notebooks/06_live.ipynb`.
+
+**Train on what you'll have at prediction time.** A game in progress shows only souls, buildings and heroes. Feeding the full model zeros or guesses for kills, levels and damage would put it off its training distribution. So the live model is trained on just the live inputs. It costs little: validation log loss 0.5259 vs 0.5183, because souls already carry most of what kills and farm say.
+
+**Decoding an undocumented field.** The live API's `objectives_mask` is a bitmask. The hypothesis "bit *i* set = objective *i* standing" was checked against the dump's per-objective destroyed times: 63,009 of 63,009 agreed. Check an encoding against an independent source before building on it.
+
+**Score predictions on the future, for real.** A collector logged 430 games once a minute; after they ended, a scorer joined each logged prediction with the result. That's the most honest test there is: no possible leakage, a different data source, and the exact model the dashboard serves. Live log loss: 0.503, well calibrated.
+
+**Check inputs, not just outputs.** The live game time was computed as `now − start_time`. Comparing live souls with the post-game souls of the same match at shifted times showed the clock was 3.5 minutes fast: `start_time` includes the pre-game. The model saw every game as older, and so more decided, than it was. Subtracting 210 s cut live log loss from 0.543 to 0.503, more than any model change. The offset was measured on the same games it was scored on, but it's one constant with a physical meaning, not a fit to outcomes.
+
+**Why the live score beat validation.** The scored model is the deploy version, trained on data up to Oct 25, so its hero strengths are current. Validation scores the train-only model, whose hero strengths are weeks old. With 421 games from one evening, the score is good to about ±0.01.
+
+**Streamlit state.** A Streamlit script reruns top to bottom on every interaction, and widgets keep their value only while their identity (label, options) stays the same. A dropdown whose options change every refresh resets itself. The fix is to keep the choice in `st.session_state` and in widgets that don't change (a text box, a row selection read in a callback).
