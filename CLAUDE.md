@@ -54,6 +54,15 @@ Live games and dashboard (M6):
 - `live.collect` logs polls to `data/live/<UTC date>.parquet`; `live.score` writes `matches.parquet`, `scored.parquet`, `scores.json` next to them (`load()` reads only the dated logs).
 - Dashboard: `streamlit run src/deadlock_predictor/app/dashboard.py` (logic in `app/helpers.py`, tested). Streamlit doesn't reload imported modules: restart it after editing them. Widgets inside the auto-refreshing fragment must not have options that change each poll (they reset).
 
+Match explorer (M7):
+- `data.match_detail.fetch_detail` caches API metadata in `data/matches/<id>.json`; parsers: `players`, `player_stats` (~50 stats/snapshot, final included), `deaths` (killer None unless an enemy player), `items`, `buffs`, `paths` (x/y per second: `x_min + x_pos / x_resolution · (x_max − x_min)`, per player).
+- The API serves processed matches at once; unprocessed ones go to Steam: 503 "Steam is busy", 429 at 3 requests/hour/IP. Don't retry in a loop.
+- Stats `kills` ≠ death list (28 vs 24 in one match): `viz.timeline.features_at` anchors kills to snapshots and adds death-list kills since.
+- `features_at` equals the training rows at snapshots (tested). Pass `stats` so building souls (`gold_boss`) step in at the event (`bounty_steps`): without it, early buildings move the curve the wrong way (mediator effect).
+- Fights (`viz.fights`): `configs/model.yaml` → `explorer:` (20 s, 3,000 units, 3+ deaths).
+- `assets.deadlock-api.com` doesn't resolve on this machine: names fall back to ids unless `data/assets/heroes.json` / `items.json` exist.
+- Plotly shapes on a subplot with no traces yet are dropped: pass `exclude_empty_subplots=False`. Static PNGs for checking need `kaleido` (install with `pip --target` into the scratchpad, not the env).
+
 ## Commands
 Conda is not on PATH in Claude's shell: use `C:\Users\fnovi\miniconda3\Scripts\conda.exe`. `gh` is not on PATH either: `C:\Program Files\GitHub CLI\gh.exe`.
 `conda run` doesn't pass stdin: to pipe code, call `C:\Users\fnovi\miniconda3\envs\deadlock\python.exe -` with `PYTHONNOUSERSITE=1`.

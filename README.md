@@ -4,7 +4,7 @@ Estimates each team's probability of winning a [Deadlock](https://store.steampow
 
 The model is trained on historical match data: every in-game stat snapshot (net worth, kills, objectives, heroes, game time) becomes a training example labeled with whether that team went on to win. Running the model over every snapshot of one match produces a win-probability curve.
 
-> **Status:** Milestone 6 (dashboard and live predictions). See the roadmap below.
+> **Status:** Milestone 7 (match explorer). See the roadmap below.
 
 ## Roadmap
 
@@ -85,7 +85,7 @@ python -m deadlock_predictor.models.refit --all                    # once: deplo
 streamlit run src/deadlock_predictor/app/dashboard.py
 ```
 
-Two pages: **Match lookup** draws the curve of any finished match, and **Live games** lists ranked games in progress with the live model's win probability, refreshed every minute. Click a game or type a match id to follow its curve. The live model sees only what a game in progress shows (souls, buildings, heroes): validation log loss 0.526 against 0.518 for the full model.
+Two pages: **Match lookup** opens the match explorer for any finished match (below), and **Live games** lists ranked games in progress with the live model's win probability, refreshed every minute. Click a game or type a match id to follow its curve. The live model sees only what a game in progress shows (souls, buildings, heroes): validation log loss 0.526 against 0.518 for the full model.
 
 To check live predictions against real results:
 
@@ -95,6 +95,18 @@ python -m deadlock_predictor.live.score                   # after they finish: s
 ```
 
 On 421 games: live log loss **0.503**, well calibrated. `notebooks/06_live.ipynb` explains the results, including a 3.5-minute clock offset in the live data.
+
+## Match explorer
+
+The dashboard's **Match lookup** shows one interactive figure per match, on a shared time axis:
+- **win probability** at every stat snapshot and at every building, mid-boss and teamfight, with buildings labelled for the team that took them;
+- **what moved it** (the model's contributions, grouped);
+- each player's **souls or level**, and the team souls lead;
+- each player's **kills, deaths (and time dead), items and buffs**.
+
+Below the figure: a **map** of everyone at a chosen minute, and **teamfight** and **player** tables. Between stat snapshots, souls and other stats are interpolated, with building souls added when the building falls. At the snapshots themselves, the curve is exactly the trained model. `notebooks/07_match_explorer.ipynb` checks the curve points and walks through a stomp and a comeback.
+
+Match details come from the deadlock-api.com API and are cached in `data/matches/`. Matches it hasn't processed yet are fetched from Steam, which allows only a few requests per hour. Hero and item names come from `assets.deadlock-api.com` (cached in `data/assets/`); without it, ids are shown.
 
 ## Project layout
 

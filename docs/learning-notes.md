@@ -129,3 +129,19 @@ Code: `streamlit run src/deadlock_predictor/app/dashboard.py`, `python -m deadlo
 **Why the live score beat validation.** The scored model is the deploy version, trained on data up to Oct 25, so its hero strengths are current. Validation scores the train-only model, whose hero strengths are weeks old. With 421 games from one evening, the score is good to about ±0.01.
 
 **Streamlit state.** A Streamlit script reruns top to bottom on every interaction, and widgets keep their value only while their identity (label, options) stays the same. A dropdown whose options change every refresh resets itself. The fix is to keep the choice in `st.session_state` and in widgets that don't change (a text box, a row selection read in a callback).
+
+## Milestone 7 — Match explorer
+
+Code: `viz/explorer.py` (dashboard **Match lookup**), `viz/timeline.py`, `viz/fights.py`, `data/match_detail.py`. Results: `notebooks/07_match_explorer.ipynb`.
+
+**Predicting between training points.** The model was trained only at stat snapshots, but the explorer wants a probability at every building and fight. Some inputs are exact at any second (buildings, mid-boss, kills); others exist only at snapshots and are interpolated (souls, levels, damage). The check that keeps this honest: at snapshot times the rows equal the training rows exactly (difference 0.0 on 29 matches). In between, interpolation uses the *next* snapshot, so those points are a best estimate of the state, not what a live viewer could have known. Fine for a post-game view, wrong for a live one.
+
+**Mediators: a feature's effect is "given the others".** At first, early buildings *lowered* the scoring team's chances 94% of the time. The model learned a building's effect with its soul bounty already in `net_worth_diff`, so "one more Guardian, same souls" reads as "worse everywhere else". Souls are a mediator: on the path from the building to winning. Feeding a model a cause without its mediator gives a misleading answer. Adding each building's souls (`gold_boss`) at the second it falls fixed the direction: 63% → 93% of events now move the curve toward the team that scored.
+
+**When two fields disagree, anchor to what the model saw.** The API's per-snapshot `kills` and its death list disagree (28 vs 24 kills for one team in one match). The curve uses the snapshot value (what the model trained on) plus exact kills since that snapshot, so it changes at the right second and stays exact at snapshots.
+
+**Clustering with simple rules.** Teamfights are deaths within 20 s of each other and within 3,000 units of the fight's centre, with several fights open at once so different lanes stay apart. The thresholds come from the data: half of all deaths come within 14 s of the previous one. A transparent rule you can explain beats a clustering algorithm nobody can tune.
+
+**Fights act through souls.** Fights move the curve toward their winner, but only slightly at the time (~0.02 for 4+ deaths): their value reaches the model through the souls they give, which interpolation spreads out. Stepping kill souls (`gold_player`) in at each kill, like building souls, is the next improvement.
+
+**A 2% team winning isn't a model failure by itself.** One match went from 2% (at exact snapshot points) to a win. A calibrated 2% should happen 1 time in 50; calibration is checked on many matches (notebook 05), not argued from one.
