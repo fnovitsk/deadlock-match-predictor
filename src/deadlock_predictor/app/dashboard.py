@@ -57,9 +57,9 @@ def lookup_page(models) -> None:
     if not match_id:
         st.markdown("### Look up a match")
         st.caption(
-            "Any ranked 6v6 match from deadlock-api.com: scoreboard, win probability at every "
-            "snapshot, building, mid-boss and fight, the key moments, every player's timeline "
-            "and build, the fights, and an animated replay on the minimap."
+            "Any ranked 6v6 match from deadlock-api.com: the scoreboard, the win probability at "
+            "every snapshot, building, mid-boss and fight, the key moments, and each player's "
+            "souls, level, damage and healing."
         )
         return
     if not match_id.isdigit():
@@ -143,7 +143,7 @@ def live_page(live_model) -> None:
                     f"{portraits(g.heroes_team1)}</div>",
                     unsafe_allow_html=True,
                 )
-            st.plotly_chart(plot_history(past, int(choice)), use_container_width=True)
+            st.plotly_chart(plot_history(past, int(choice)), width="stretch")
             if len(past) < 3:
                 st.caption(
                     "The live API only gives the current state: the curve starts when you "
