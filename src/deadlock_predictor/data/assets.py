@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import io
 import json
 from dataclasses import dataclass
 from functools import cache
@@ -121,11 +122,12 @@ def _items_by_id() -> dict[int, dict]:
 def hero(hero_id: int) -> Hero:
     h = _heroes_by_id().get(hero_id, {})
     images = h.get("images") or {}
-    rgb = (h.get("colors") or {}).get("ui") or [150, 150, 150]
+    # `style_hex` is distinct for every hero; `ui` is shared by several.
+    color = (h.get("colors") or {}).get("style_hex") or "#969696"
     return Hero(
         id=hero_id,
         name=h.get("name") or f"Hero {hero_id}",
-        color="#{:02x}{:02x}{:02x}".format(*rgb[:3]),
+        color=color.lower(),
         portrait=image(images.get("icon_image_small")),
         card=image(images.get("icon_hero_card")),
         minimap=image(images.get("minimap_image")),
@@ -151,6 +153,28 @@ def item(item_id: int) -> Item:
 class MapInfo:
     radius: float  # world units from the centre to the image's edge; y points up
     image: str | None  # data URI of the minimap
+    dark: str | None  # the same with the streets recoloured for a dark page
+
+
+def tinted(data_uri: str | None, color: tuple[int, int, int]) -> str | None:
+    """The image with every visible pixel painted `color`, keeping its transparency (and
+    the shading, through the alpha channel). Turns the grey minimap into one that reads on
+    a dark page."""
+    if not data_uri:
+        return None
+    from PIL import Image
+
+    raw = base64.b64decode(data_uri.split(",", 1)[1])
+    img = Image.open(io.BytesIO(raw)).convert("RGBA")
+    grey = img.convert("L")
+    # Darker source pixels (streets) get the full colour, lighter ones (edges) a lighter tint.
+    out = Image.merge(
+        "RGBA",
+        [grey.point(lambda v, c=c: min(255, c + v // 4)) for c in color] + [img.getchannel("A")],
+    )
+    buffer = io.BytesIO()
+    out.save(buffer, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
 
 
 @cache
@@ -160,4 +184,7 @@ def map_info() -> MapInfo:
     `configs/buildings.yaml` instead (see `viz.map_replay.estimate_buildings`)."""
     data = load("map") or {}
     images = data.get("images") or {}
-    return MapInfo(radius=float(data.get("radius") or 10752), image=image(images.get("minimap")))
+    minimap = image(images.get("minimap"))
+    return MapInfo(
+        radius=float(data.get("radius") or 10752), image=minimap, dark=tinted(minimap, (52, 60, 76))
+    )

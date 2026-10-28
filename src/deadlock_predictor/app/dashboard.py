@@ -31,13 +31,12 @@ from deadlock_predictor.app.helpers import (
 from deadlock_predictor.data.live import fetch_active
 from deadlock_predictor.live.collect import load
 from deadlock_predictor.models.refit import refit_path
+from deadlock_predictor.viz import charts
 from deadlock_predictor.viz.curve import CONFIG_PATH, load_models
 from deadlock_predictor.viz.explorer import (
     Match,
     fight_table,
     load_match,
-    map_figure,
-    match_figure,
     player_table,
 )
 
@@ -77,7 +76,8 @@ def lookup_page(models) -> None:
         return
     if m.failed:
         st.warning(f"This match fails training filters ({', '.join(m.failed)}): read it with care.")
-    st.plotly_chart(match_figure(m), use_container_width=True)
+    st.plotly_chart(charts.win_probability(m), use_container_width=True)
+    st.plotly_chart(charts.player_timeline(m), use_container_width=True)
 
     left, right = st.columns([3, 2])
     with left:
@@ -85,7 +85,7 @@ def lookup_page(models) -> None:
         minute = st.slider(
             "Minute", 0.0, m.duration_s / 60, min(10.0, m.duration_s / 60), step=0.25
         )
-        st.plotly_chart(map_figure(m, minute * 60), use_container_width=True)
+        st.plotly_chart(charts.minimap(m, minute * 60, height=600), use_container_width=True)
     with right:
         st.subheader("Teamfights")
         fights = fight_table(m)

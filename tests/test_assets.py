@@ -56,7 +56,14 @@ def test_image_without_network(tmp_path, monkeypatch):
 
 
 def test_hero_and_item_details(monkeypatch):
-    heroes = {7: {"id": 7, "name": "Wraith", "colors": {"ui": [255, 0, 16]}, "images": {}}}
+    heroes = {
+        7: {
+            "id": 7,
+            "name": "Wraith",
+            "colors": {"style_hex": "#FF0010", "ui": [1, 2, 3]},
+            "images": {},
+        }
+    }
     items = {
         5: {
             "id": 5,
