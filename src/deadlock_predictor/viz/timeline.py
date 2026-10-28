@@ -51,7 +51,8 @@ def stat_knots(rows: pd.DataFrame) -> pd.DataFrame:
 
 
 def objective_events(rows: pd.DataFrame) -> pd.DataFrame:
-    """Buildings destroyed and mid-boss claims/kills: t, kind, group, team that scored."""
+    """Buildings destroyed and mid-boss claims/kills: t, kind, group, team that scored,
+    and for buildings the owner and the data's own name (e.g. 'Tier1Lane3')."""
     first = rows.iloc[0]
     other = {"Team0": "Team1", "Team1": "Team0"}
     events = []
@@ -64,7 +65,14 @@ def objective_events(rows: pd.DataFrame) -> pd.DataFrame:
         group = _group(kind)
         if t > 0 and group:
             events.append(
-                {"t": float(t), "kind": EVENT_NAMES[group], "group": group, "team": other[owner]}
+                {
+                    "t": float(t),
+                    "kind": EVENT_NAMES[group],
+                    "group": group,
+                    "team": other[owner],
+                    "owner": owner,
+                    "name": kind,
+                }
             )
     for claimed, killed, t in zip(
         first["mid_boss.team_claimed"],
@@ -82,7 +90,7 @@ def objective_events(rows: pd.DataFrame) -> pd.DataFrame:
                     "killed_by": killed,
                 }
             )
-    columns = ["t", "kind", "group", "team", "killed_by"]
+    columns = ["t", "kind", "group", "team", "killed_by", "owner", "name"]
     return pd.DataFrame(events, columns=columns).sort_values("t", ignore_index=True)
 
 
