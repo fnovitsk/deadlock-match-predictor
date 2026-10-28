@@ -69,14 +69,14 @@ def extract_partition(
     tmp = out_path.with_suffix(".tmp")
     con.sql(extract_query(urls, partition, columns), params=params).write_parquet(str(tmp))
     tmp.replace(out_path)  # only a complete file ever has the final name
-    return con.sql(f"SELECT count(*) FROM '{out_path.as_posix()}'").fetchone()[0]
+    return con.sql(f"SELECT count(*) FROM '{out_path.as_posix()}'").fetchall()[0][0]
 
 
 def max_start_time(con: duckdb.DuckDBPyConnection, urls: list[str]) -> datetime | None:
     files = ", ".join(f"'{u}'" for u in urls)
     return con.sql(
         f"SELECT max(start_time) FROM read_parquet([{files}], union_by_name = true)"
-    ).fetchone()[0]
+    ).fetchall()[0][0]
 
 
 def first_partition(con: duckdb.DuckDBPyConnection, manifest: dict, start_time: datetime) -> int:
