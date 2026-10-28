@@ -106,7 +106,7 @@ The dashboard's **Match lookup** shows one interactive figure per match, on a sh
 
 Below the figure: a **map** of everyone at a chosen minute, and **teamfight** and **player** tables. Between stat snapshots, souls and other stats are interpolated, with building souls added when the building falls. At the snapshots themselves, the curve is exactly the trained model. `notebooks/07_match_explorer.ipynb` checks the curve points and walks through a stomp and a comeback.
 
-Match details come from the deadlock-api.com API and are cached in `data/matches/`. Matches it hasn't processed yet are fetched from Steam, which allows only a few requests per hour. Hero and item names come from `assets.deadlock-api.com` (cached in `data/assets/`); without it, ids are shown.
+Match details come from the deadlock-api.com API and are cached in `data/matches/`. Matches it hasn't processed yet are fetched from Steam, which allows only a few requests per hour. Hero and item names come from the API's `/v1/assets` (cached in `data/assets/`).
 
 ## Project layout
 
