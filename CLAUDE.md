@@ -37,6 +37,7 @@ Models (`src/deadlock_predictor/models/`, settings in `configs/model.yaml`):
 - `models.evaluate.scores` / `scores_by_time` / `reliability` are the shared metrics.
 - **The test split (Oct 19 → end of data) was scored at the end of Milestone 4.** It is used now: new comparisons need a newer period.
 - LightGBM uses `n_jobs: 8`: all 16 threads at full load crashed the machine once.
+- DuckDB 2.0 (what CI installs) has no `fetchone()` on relations: use `.fetchall()[0]`.
 - `t` is unsigned in the data: convert to float before arithmetic or nearest-value lookups.
 - `refit --all` → `*_deploy.joblib` on all splits: what the curves use. Nothing is left to score them on.
 
