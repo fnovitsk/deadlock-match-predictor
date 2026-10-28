@@ -47,6 +47,12 @@ Curves (`python -m deadlock_predictor.viz.curve <match_id>` → `reports/curves/
 - `/v1/matches/recently-fetched` lists recent matches (for fresh, never-seen data).
 - `models.data.predict_saved(saved, df, heroes=...)` takes hero picks directly for matches not in `heroes.parquet`.
 
+Live games and dashboard (M6):
+- `/v1/matches/active`: per team `net_worth` and `objectives_mask`, per player `hero_id`, `abandoned`; plus `start_time`. No kills, levels, damage, mid-boss or rank. Ranked 6v6 = `match_mode_parsed == "Ranked"` and `game_mode_parsed == "KECitadelGameModeNormal"`. Mask bit i set = objective i still standing (verified 63,009/63,009); unused lane-2 bits are always set.
+- `data.live.live_state` builds the live model's inputs. Game time = `now − start_time − PREGAME_S` (210 s of pre-game; found by `live.score`'s clock check). The live model (`gbm_live`: t, net worth, 5 objective diffs, heroes): validation 0.5259; deploy version scored live 0.503 on 421 games.
+- `live.collect` logs polls to `data/live/<UTC date>.parquet`; `live.score` writes `matches.parquet`, `scored.parquet`, `scores.json` next to them (`load()` reads only the dated logs).
+- Dashboard: `streamlit run src/deadlock_predictor/app/dashboard.py` (logic in `app/helpers.py`, tested). Streamlit doesn't reload imported modules: restart it after editing them. Widgets inside the auto-refreshing fragment must not have options that change each poll (they reset).
+
 ## Commands
 Conda is not on PATH in Claude's shell: use `C:\Users\fnovi\miniconda3\Scripts\conda.exe`. `gh` is not on PATH either: `C:\Program Files\GitHub CLI\gh.exe`.
 `conda run` doesn't pass stdin: to pipe code, call `C:\Users\fnovi\miniconda3\envs\deadlock\python.exe -` with `PYTHONNOUSERSITE=1`.
