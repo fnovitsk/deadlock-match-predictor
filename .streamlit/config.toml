@@ -1,0 +1,8 @@
+# Dark theme for the dashboard (charts use the matching Plotly template, viz.theme).
+[theme]
+base = "dark"
+primaryColor = "#e8890c"
+backgroundColor = "#0d0f14"
+secondaryBackgroundColor = "#171b23"
+textColor = "#e3e6ec"
+font = "sans serif"
