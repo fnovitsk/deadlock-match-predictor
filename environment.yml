@@ -23,6 +23,7 @@ dependencies:
   - matplotlib
   # dashboard
   - streamlit
+  - plotly
   # dev tools
   - pytest
   - ruff
