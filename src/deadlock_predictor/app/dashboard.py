@@ -14,12 +14,12 @@ from __future__ import annotations
 import time
 
 import joblib
-import matplotlib.pyplot as plt
 import pandas as pd
 import requests
 import streamlit as st
 import yaml
 
+from deadlock_predictor.app import match_page
 from deadlock_predictor.app.helpers import (
     api_error_message,
     history,
@@ -27,18 +27,14 @@ from deadlock_predictor.app.helpers import (
     live_table,
     pick_game,
     plot_history,
+    portraits,
 )
 from deadlock_predictor.data.live import fetch_active
 from deadlock_predictor.live.collect import load
 from deadlock_predictor.models.refit import refit_path
-from deadlock_predictor.viz import charts
 from deadlock_predictor.viz.curve import CONFIG_PATH, load_models
-from deadlock_predictor.viz.explorer import (
-    Match,
-    fight_table,
-    load_match,
-    player_table,
-)
+from deadlock_predictor.viz.explorer import Match, load_match
+from deadlock_predictor.viz.theme import TEAM_COLORS
 
 REFRESH_S = 60
 
@@ -55,15 +51,16 @@ def explore(match_id: int, _models) -> Match:
 
 
 def lookup_page(models) -> None:
-    st.header("Match lookup")
-    st.caption(
-        "Any ranked 6v6 match, fetched from deadlock-api.com. The curve has a point at every "
-        "stat snapshot (filled) and at every building, mid-boss and teamfight (open); between "
-        "snapshots, souls and other stats are interpolated. Hover anything for details, drag "
-        "to zoom, double-click to reset."
-    )
-    match_id = st.text_input("Match id", placeholder="e.g. 124832378").strip()
+    match_id = st.text_input(
+        "Match id", placeholder="e.g. 123278367", label_visibility="collapsed"
+    ).strip()
     if not match_id:
+        st.markdown("### Look up a match")
+        st.caption(
+            "Any ranked 6v6 match from deadlock-api.com: scoreboard, win probability at every "
+            "snapshot, building, mid-boss and fight, the key moments, every player's timeline "
+            "and build, the fights, and an animated replay on the minimap."
+        )
         return
     if not match_id.isdigit():
         st.error("A match id is a number.")
@@ -74,27 +71,7 @@ def lookup_page(models) -> None:
     except (requests.RequestException, ValueError, KeyError) as error:
         st.error(api_error_message(match_id, error))
         return
-    if m.failed:
-        st.warning(f"This match fails training filters ({', '.join(m.failed)}): read it with care.")
-    st.plotly_chart(charts.win_probability(m), use_container_width=True)
-    st.plotly_chart(charts.player_timeline(m), use_container_width=True)
-
-    left, right = st.columns([3, 2])
-    with left:
-        st.subheader("Map")
-        minute = st.slider(
-            "Minute", 0.0, m.duration_s / 60, min(10.0, m.duration_s / 60), step=0.25
-        )
-        st.plotly_chart(charts.minimap(m, minute * 60, height=600), use_container_width=True)
-    with right:
-        st.subheader("Teamfights")
-        fights = fight_table(m)
-        if fights.empty:
-            st.info("No teamfights (3+ deaths close together).")
-        else:
-            st.dataframe(fights, hide_index=True)
-        st.subheader("Players")
-        st.dataframe(player_table(m), hide_index=True)
+    match_page.render(m)
     with st.expander("Curve numbers"):
         st.dataframe(m.points.assign(minute=m.points.t / 60).set_index("minute"))
 
@@ -156,9 +133,17 @@ def live_page(live_model) -> None:
                 st.info(f"Match {wanted} has ended: its full curve is in Match lookup.")
                 choice = wanted
             past = history(int(choice), load(), seen)
-            fig = plot_history(past, int(choice))
-            st.pyplot(fig)
-            plt.close(fig)
+            game = states[states.match_id == int(choice)]
+            if len(game):
+                g = game.iloc[0]
+                st.markdown(
+                    f"<div style='color:{TEAM_COLORS['Team0']}'>Hidden King "
+                    f"{portraits(g.heroes_team0)}</div>"
+                    f"<div style='color:{TEAM_COLORS['Team1']}; margin-top:4px'>Archmother "
+                    f"{portraits(g.heroes_team1)}</div>",
+                    unsafe_allow_html=True,
+                )
+            st.plotly_chart(plot_history(past, int(choice)), use_container_width=True)
             if len(past) < 3:
                 st.caption(
                     "The live API only gives the current state: the curve starts when you "

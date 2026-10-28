@@ -63,7 +63,8 @@ def test_plot_history(live_model):
     states = pd.concat(
         [live_states([game(7, start=0)], live_model, now=t) for t in np.arange(600, 900, 60)]
     )
-    assert len(plot_history(states, 7).axes) == 2
+    fig = plot_history(states, 7)
+    assert len(fig.data) == 3 and fig.layout.template.layout is not None
 
 
 class FakeResponse:

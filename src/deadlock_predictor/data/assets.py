@@ -188,3 +188,13 @@ def map_info() -> MapInfo:
     return MapInfo(
         radius=float(data.get("radius") or 10752), image=minimap, dark=tinted(minimap, (52, 60, 76))
     )
+
+
+@cache
+def rank(badge: int) -> tuple[str, str | None]:
+    """The rank name ("Acolyte 3") and badge image of a badge (tier·10 + subtier)."""
+    tier, sub = divmod(int(badge), 10)
+    entry = next((r for r in load("ranks") if r.get("tier") == tier), {})
+    name = entry.get("name") or f"Tier {tier}"
+    images = entry.get("images") or {}
+    return (f"{name} {sub}" if sub else name), image(images.get(f"large_subrank{sub}"))

@@ -88,3 +88,13 @@ def test_hero_and_item_details(monkeypatch):
     assert not ability.shop and ability.tier == 0
     for f in (assets.hero, assets.item):
         f.cache_clear()
+
+
+def test_rank(monkeypatch):
+    ranks = [{"tier": 5, "name": "Ritualist", "images": {}}]
+    monkeypatch.setattr(assets, "load", lambda kind: ranks)
+    monkeypatch.setattr(assets, "image", lambda url: None)
+    assets.rank.cache_clear()
+    assert assets.rank(53) == ("Ritualist 3", None)
+    assert assets.rank(70)[0] == "Tier 7"
+    assets.rank.cache_clear()

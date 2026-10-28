@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import time
 
-import matplotlib.pyplot as plt
 import pandas as pd
+import plotly.graph_objects as go
 import requests
+from plotly.subplots import make_subplots
 
+from deadlock_predictor.data.assets import hero
 from deadlock_predictor.data.live import OBJ_COLUMNS, heroes_frame, live_state
 from deadlock_predictor.models.data import predict_saved
+from deadlock_predictor.viz.theme import TEAM_COLORS, TEAM_FILL, TEXT, styled
 
 
 def live_states(games: list[dict], model: dict, now: float | None = None) -> pd.DataFrame:
@@ -56,20 +59,77 @@ def history(match_id: int, *frames: pd.DataFrame) -> pd.DataFrame:
     return states.sort_values("t", ignore_index=True)
 
 
-def plot_history(states: pd.DataFrame, match_id: int):
-    """P(Team0 wins) and the souls lead of one game in progress, so far."""
-    fig, (ax, bx) = plt.subplots(2, 1, figsize=(9, 5.5), sharex=True, height_ratios=[3, 2])
+def plot_history(states: pd.DataFrame, match_id: int) -> go.Figure:
+    """P(Hidden King wins) and the souls lead of one game in progress, so far (Plotly)."""
+    fig = make_subplots(
+        rows=2, cols=1, shared_xaxes=True, row_heights=[0.65, 0.35], vertical_spacing=0.06
+    )
     minutes = states.t / 60
-    ax.axhspan(0.5, 1, color="tab:orange", alpha=0.06)
-    ax.axhspan(0, 0.5, color="tab:blue", alpha=0.06)
-    ax.axhline(0.5, color="grey", lw=0.8)
-    ax.plot(minutes, states.p, marker=".", color="black")
-    ax.set(ylim=(0, 1), ylabel="P(Hidden King wins)", title=f"Match {match_id} (live)")
-    bx.axhline(0, color="grey", lw=0.8)
-    bx.plot(minutes, states.net_worth_diff, color="tab:green")
-    bx.set(xlabel="minute (since the match started)", ylabel="souls lead (Hidden King)")
-    fig.tight_layout()
-    return fig
+    fig.add_hrect(
+        y0=0.5,
+        y1=1,
+        fillcolor=TEAM_FILL["Team0"],
+        line_width=0,
+        row=1,
+        col=1,
+        exclude_empty_subplots=False,
+    )
+    fig.add_hrect(
+        y0=0,
+        y1=0.5,
+        fillcolor=TEAM_FILL["Team1"],
+        line_width=0,
+        row=1,
+        col=1,
+        exclude_empty_subplots=False,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=minutes,
+            y=states.p,
+            mode="lines+markers",
+            name="P(Hidden King wins)",
+            line={"color": TEXT, "width": 3},
+            hovertemplate="%{x:.1f} min: %{y:.0%}<extra></extra>",
+        ),
+        row=1,
+        col=1,
+    )
+    lead = states.net_worth_diff
+    for team, sign in (("Team0", 1), ("Team1", -1)):
+        fig.add_trace(
+            go.Scatter(
+                x=minutes,
+                y=lead.clip(lower=0) if sign > 0 else lead.clip(upper=0),
+                fill="tozeroy",
+                mode="lines",
+                line={"color": TEAM_COLORS[team]},
+                name=f"souls lead ({'Hidden King' if sign > 0 else 'Archmother'})",
+                hovertemplate="%{x:.1f} min: %{y:+,.0f}<extra></extra>",
+            ),
+            row=2,
+            col=1,
+        )
+    fig.update_yaxes(range=[0, 1], tickformat=".0%", title_text="P(Hidden King)", row=1, col=1)
+    fig.update_yaxes(title_text="souls lead", row=2, col=1)
+    fig.update_xaxes(title_text="minute (game clock)", row=2, col=1)
+    fig.update_layout(title=f"Match {match_id} (live)", showlegend=False)
+    return styled(fig, 520)
+
+
+def portraits(hero_ids) -> str:
+    """HTML: a row of hero portraits (names on hover)."""
+    out = []
+    for h in hero_ids:
+        info = hero(int(h))
+        if info.portrait:
+            out.append(
+                f'<img src="{info.portrait}" title="{info.name}" '
+                'style="width:40px;height:40px;border-radius:6px;margin-right:4px"/>'
+            )
+        else:
+            out.append(f"<span style='margin-right:8px'>{info.name}</span>")
+    return "".join(out)
 
 
 def api_error_message(match_id: str, error: Exception) -> str:
