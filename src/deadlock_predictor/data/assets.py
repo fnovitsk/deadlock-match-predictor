@@ -1,7 +1,7 @@
-"""Hero, item and map assets, from the API's static assets (`/v1/assets/...`).
+"""Hero, item and rank assets, from the API's static assets (`/v1/assets/...`).
 
 The lists are fetched once and cached in `data/assets/` (heroes.json, items.json,
-map.json), and images in `data/assets/images/`; delete them to refresh after a game
+ranks.json), and images in `data/assets/images/`; delete them to refresh after a game
 update. Without network, names fall back to ids ("Hero 12", "Item 267712790") and images
 to None. The assets used to live on assets.deadlock-api.com, which no longer exists.
 """
@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import io
 import json
 from dataclasses import dataclass
 from functools import cache
@@ -92,9 +91,7 @@ class Hero:
     id: int
     name: str
     color: str  # the hero's own colour, "#RRGGBB"
-    portrait: str | None  # data URIs (or None)
-    card: str | None
-    minimap: str | None
+    portrait: str | None  # data URI (or None)
 
 
 @dataclass(frozen=True)
@@ -129,8 +126,6 @@ def hero(hero_id: int) -> Hero:
         name=h.get("name") or f"Hero {hero_id}",
         color=color.lower(),
         portrait=image(images.get("icon_image_small")),
-        card=image(images.get("icon_hero_card")),
-        minimap=image(images.get("minimap_image")),
     )
 
 
@@ -146,47 +141,6 @@ def item(item_id: int) -> Item:
         slot=i.get("item_slot_type") or "" if shop else "",
         icon=image(i.get("image")) if shop else None,
         shop=shop,
-    )
-
-
-@dataclass(frozen=True)
-class MapInfo:
-    radius: float  # world units from the centre to the image's edge; y points up
-    image: str | None  # data URI of the minimap
-    dark: str | None  # the same with the streets recoloured for a dark page
-
-
-def tinted(data_uri: str | None, color: tuple[int, int, int]) -> str | None:
-    """The image with every visible pixel painted `color`, keeping its transparency (and
-    the shading, through the alpha channel). Turns the grey minimap into one that reads on
-    a dark page."""
-    if not data_uri:
-        return None
-    from PIL import Image
-
-    raw = base64.b64decode(data_uri.split(",", 1)[1])
-    img = Image.open(io.BytesIO(raw)).convert("RGBA")
-    grey = img.convert("L")
-    # Darker source pixels (streets) get the full colour, lighter ones (edges) a lighter tint.
-    out = Image.merge(
-        "RGBA",
-        [grey.point(lambda v, c=c: min(255, c + v // 4)) for c in color] + [img.getchannel("A")],
-    )
-    buffer = io.BytesIO()
-    out.save(buffer, format="PNG")
-    return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
-
-
-@cache
-def map_info() -> MapInfo:
-    """The minimap image and its scale. The asset's own building positions
-    (`objective_positions`) don't line up with the map, so buildings come from
-    `configs/buildings.yaml` instead (see `viz.map_replay.estimate_buildings`)."""
-    data = load("map") or {}
-    images = data.get("images") or {}
-    minimap = image(images.get("minimap"))
-    return MapInfo(
-        radius=float(data.get("radius") or 10752), image=minimap, dark=tinted(minimap, (52, 60, 76))
     )
 
 

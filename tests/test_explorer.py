@@ -22,7 +22,7 @@ def match(models, monkeypatch):  # noqa: F811
     for p in info["players"]:
         p["player_rank_data"] = {"initial_display_rank": 51}
     monkeypatch.setattr(explorer.md, "fetch_detail", lambda _: info)
-    monkeypatch.setattr(explorer, "hero", lambda h: Hero(h, f"H{h}", "#123456", ICON, None, None))
+    monkeypatch.setattr(explorer, "hero", lambda h: Hero(h, f"H{h}", "#123456", ICON))
     monkeypatch.setattr(explorer, "item", fake_item)
     return explorer.load_match(1, models, CONFIG)
 

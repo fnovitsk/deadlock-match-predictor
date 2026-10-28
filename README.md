@@ -18,7 +18,7 @@ The model is trained on historical match data: every in-game stat snapshot (net 
 | 5 | Win-probability curves | Plot for any match ID |
 | 6 | Dashboard and live predictions | Streamlit app, live model, collector and scorer |
 | 7 | Match explorer | Interactive per-player view of a match |
-| 8 | Match page UI | Scoreboard, key moments, player and fight tabs, map replay |
+| 8 | Match page UI | Scoreboard, key moments, per-player stats, dark theme |
 
 ## Setup
 
@@ -104,13 +104,11 @@ The dashboard's **Match lookup** (dark theme) shows, for any ranked 6v6 match:
 - **Win probability:** at every stat snapshot and at every building, mid-boss and teamfight. Fights are shaded, and hovering shows the score and souls lead at that moment. Under it, what moved each step.
 - **Key moments:** the biggest swings, what caused them, and a button to zoom there.
 - **One time range** that zooms every chart together.
-- **Players tab:** a timeline per hero, with kills (and a line to each victim), deaths and time dead, item icons, and buffs; each player's souls, level, damage or healing in their hero's colour; final builds.
-- **Fights tab:** a card per fight, with a minimap of where it happened, who died, and how it moved the odds; plus who killed whom.
-- **Map replay:** the match animated on the real minimap, with players, deaths and buildings as they fall.
+- **Players:** each player's souls, level, hero damage or healing over time in their hero's colour, and the team souls lead.
 
 Between stat snapshots, souls and other stats are interpolated, with building souls added when the building falls. At the snapshots themselves, the curve is exactly the trained model. `notebooks/07_match_explorer.ipynb` checks the curve points and walks through a stomp and a comeback.
 
-Match details come from the deadlock-api.com API and are cached in `data/matches/`. Matches it hasn't processed yet are fetched from Steam, which allows only a few requests per hour. Hero, item and rank names and images, and the minimap, come from the API's `/v1/assets` (cached in `data/assets/`). Building positions on the map are estimated from the data (`configs/buildings.yaml`; `python -m deadlock_predictor.viz.map_replay` re-estimates them).
+Match details come from the deadlock-api.com API and are cached in `data/matches/`. Matches it hasn't processed yet are fetched from Steam, which allows only a few requests per hour. Hero, item and rank names and images come from the API's `/v1/assets` (cached in `data/assets/`).
 
 ## Project layout
 

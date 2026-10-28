@@ -3,7 +3,7 @@
 `load_match` gathers the API metadata, the training snapshot rows, the win probability at
 every snapshot, building, mid-boss and fight (`viz.timeline`), the fights (`viz.fights`),
 and hero and item details (`data.assets`). The charts are in `viz.charts` and
-`viz.map_replay`; the page that shows them in `app.match_page`.
+the page that shows them in `app.match_page`.
 """
 
 from __future__ import annotations
@@ -38,8 +38,8 @@ class Match:
     winner: str
     failed: list[str]
     badge: int  # the lobby's average rank (tier·10 + subtier; 0 if unknown)
-    # One row per player, Team0 first: slot, team, hero_id, hero (name), color, portrait,
-    # card, minimap (data URIs or None), and the game's own kills, deaths, assists.
+    # One row per player, Team0 first: slot, team, hero_id, hero (name), color, portrait
+    # (data URI or None), and the game's own kills, deaths, assists.
     players: pd.DataFrame
     stats: pd.DataFrame
     deaths: pd.DataFrame
@@ -57,8 +57,6 @@ def _players(info: dict) -> pd.DataFrame:
     players["hero"] = [h.name for h in details]
     players["color"] = [h.color for h in details]
     players["portrait"] = [h.portrait for h in details]
-    players["card"] = [h.card for h in details]
-    players["minimap"] = [h.minimap for h in details]
     totals = {p["player_slot"]: p for p in info["players"]}
     for key in ("kills", "deaths", "assists"):
         players[key] = [int(totals[s].get(key) or 0) for s in players.slot]

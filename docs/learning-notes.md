@@ -148,7 +148,7 @@ Code: `viz/explorer.py` (dashboard **Match lookup**), `viz/timeline.py`, `viz/fi
 
 ## Milestone 8 — Match page UI
 
-Code: `app/match_page.py`, `viz/charts.py`, `viz/map_replay.py`, `viz/moments.py`, `viz/theme.py`.
+Code: `app/match_page.py`, `viz/charts.py`, `viz/moments.py`, `viz/theme.py`.
 
 **One question per chart.** The M7 figure stacked four rows into one image. The page now gives each question its own chart, at a readable size:
 - who's winning, and when it changed (the curve);
@@ -169,4 +169,6 @@ One shared time range keeps them in sync, which is what the single figure was fo
 
 **Summaries that explain themselves.** Key moments merge curve steps within 60 s, rank them by how much they moved P, and name the cause from the model's own contributions ("mostly net worth, objectives"). It's the model's explanation, not ground truth. But it's the same SHAP decomposition that adds up exactly to the curve.
 
-**Performance is part of the design.** The replay has 561 frames. Building them as validated Plotly objects took 12 s. Plain dicts plus positions held as a players × seconds array take 3 s, and the replay is cached per start time. Images are embedded as data URIs, so the page doesn't depend on the asset host once cached.
+**Performance is part of the design.** The replay had 561 frames. Building them as validated Plotly objects took 12 s. Plain dicts plus positions held as a players × seconds array took 3 s. Images are embedded as data URIs, so the page doesn't depend on the asset host once cached.
+
+**Less can be more.** After seeing the full page, the player timeline, final builds, the fights tab and the map replay were removed. The page kept the scoreboard, the curve with its key moments, and per-player stats. Building a view is the cheapest way to find out whether it earns its place. Everything removed is in the git history of `feat/match-ui` if it's ever wanted back.
