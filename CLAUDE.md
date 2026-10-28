@@ -60,7 +60,7 @@ Match explorer (M7):
 - Stats `kills` ≠ death list (28 vs 24 in one match): `viz.timeline.features_at` anchors kills to snapshots and adds death-list kills since.
 - `features_at` equals the training rows at snapshots (tested). Pass `stats` so building souls (`gold_boss`) step in at the event (`bounty_steps`): without it, early buildings move the curve the wrong way (mediator effect).
 - Fights (`viz.fights`): `configs/model.yaml` → `explorer:` (20 s, 3,000 units, 3+ deaths).
-- `assets.deadlock-api.com` doesn't resolve on this machine: names fall back to ids unless `data/assets/heroes.json` / `items.json` exist.
+- Hero and item names: `data.assets` (`hero_name`, `item_name`) from `api.deadlock-api.com/v1/assets/heroes` and `/items`, cached in `data/assets/` (delete to refresh after a game update). `assets.deadlock-api.com` no longer exists. `/v1/assets/map` has the minimap image and radius.
 - Plotly shapes on a subplot with no traces yet are dropped: pass `exclude_empty_subplots=False`. Static PNGs for checking need `kaleido` (install with `pip --target` into the scratchpad, not the env).
 
 ## Commands

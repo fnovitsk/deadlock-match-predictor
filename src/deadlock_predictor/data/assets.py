@@ -1,11 +1,9 @@
-"""Hero and item names, from assets.deadlock-api.com.
+"""Hero and item names, from the API's static assets (`/v1/assets/heroes`, `/items`).
 
-The names are fetched once and cached in `data/assets/` (heroes.json, items.json). That
-host doesn't resolve on every network; if it fails, save the two JSON files there by hand
-from a browser that can reach it:
-- https://assets.deadlock-api.com/v2/heroes → data/assets/heroes.json
-- https://assets.deadlock-api.com/v2/items → data/assets/items.json
-Without them, names fall back to ids ("Hero 12", "Item 267712790").
+The names are fetched once and cached in `data/assets/` (heroes.json, items.json); delete
+those files to refresh them after a game update. Without network, names fall back to ids
+("Hero 12", "Item 267712790"). The assets used to live on assets.deadlock-api.com, which no
+longer exists.
 """
 
 from __future__ import annotations
@@ -20,10 +18,10 @@ from deadlock_predictor.data.dumps import USER_AGENT
 from deadlock_predictor.data.match import ROOT
 
 ASSETS_DIR = ROOT / "data" / "assets"
-ASSETS_URL = "https://assets.deadlock-api.com/v2/{kind}"
+ASSETS_URL = "https://api.deadlock-api.com/v1/assets/{kind}"
 
 
-def load(kind: str, assets_dir: Path = ASSETS_DIR, timeout: float = 10) -> list[dict]:
+def load(kind: str, assets_dir: Path = ASSETS_DIR, timeout: float = 60) -> list[dict]:
     """The asset list for `kind` ('heroes' or 'items'): cached, else fetched, else []."""
     path = assets_dir / f"{kind}.json"
     if path.exists():
