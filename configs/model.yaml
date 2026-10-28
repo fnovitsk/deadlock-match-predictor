@@ -61,3 +61,9 @@ test:
 # Deploy refit (refit --all): the test cells plus these.
 deploy:
   cells: [gbm_live]
+
+# Match explorer (viz.explorer): how deaths group into teamfights.
+explorer:
+  fight_gap_s: 20        # a death joins a fight within this many seconds of its last death
+  fight_radius: 3000     # ... and within this distance (world units) of its centre
+  fight_min_deaths: 3    # fewer deaths is a skirmish, not a fight

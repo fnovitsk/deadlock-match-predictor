@@ -3,7 +3,7 @@
 Run: streamlit run src/deadlock_predictor/app/dashboard.py
 
 Two pages:
-- Match lookup: the win-probability curve of any finished ranked match (`viz.curve`).
+- Match lookup: the interactive explorer of any finished ranked match (`viz.explorer`).
 - Live games: ranked games in progress with the live model's P(Hidden King wins), refreshed every
   minute; pick one to see its curve so far (from the collector's log, if it's running, and
   from the polls made while this page is open).
@@ -21,6 +21,7 @@ import streamlit as st
 import yaml
 
 from deadlock_predictor.app.helpers import (
+    api_error_message,
     history,
     live_states,
     live_table,
@@ -30,7 +31,15 @@ from deadlock_predictor.app.helpers import (
 from deadlock_predictor.data.live import fetch_active
 from deadlock_predictor.live.collect import load
 from deadlock_predictor.models.refit import refit_path
-from deadlock_predictor.viz.curve import CONFIG_PATH, draw, load_models
+from deadlock_predictor.viz.curve import CONFIG_PATH, load_models
+from deadlock_predictor.viz.explorer import (
+    Match,
+    fight_table,
+    load_match,
+    map_figure,
+    match_figure,
+    player_table,
+)
 
 REFRESH_S = 60
 
@@ -41,13 +50,20 @@ def deploy_models():
     return load_models(config), joblib.load(refit_path(config["gbm_live"], "deploy"))
 
 
+@st.cache_data(show_spinner=False, max_entries=20)
+def explore(match_id: int, _models) -> Match:
+    return load_match(match_id, _models)
+
+
 def lookup_page(models) -> None:
     st.header("Match lookup")
     st.caption(
-        "Any ranked 6v6 match: from the local dump, or fetched from deadlock-api.com. "
-        "One point per stat snapshot (every 3-5 minutes)."
+        "Any ranked 6v6 match, fetched from deadlock-api.com. The curve has a point at every "
+        "stat snapshot (filled) and at every building, mid-boss and teamfight (open); between "
+        "snapshots, souls and other stats are interpolated. Hover anything for details, drag "
+        "to zoom, double-click to reset."
     )
-    match_id = st.text_input("Match id", placeholder="e.g. 124832378")
+    match_id = st.text_input("Match id", placeholder="e.g. 124832378").strip()
     if not match_id:
         return
     if not match_id.isdigit():
@@ -55,15 +71,32 @@ def lookup_page(models) -> None:
         return
     try:
         with st.spinner("Loading the match..."):
-            fig, curve, events = draw(int(match_id), models=models)
-    except (requests.RequestException, ValueError) as error:
-        st.error(f"Couldn't draw match {match_id}: {error}")
+            m = explore(int(match_id), models)
+    except (requests.RequestException, ValueError, KeyError) as error:
+        st.error(api_error_message(match_id, error))
         return
-    st.pyplot(fig)
-    plt.close(fig)
-    with st.expander("Numbers"):
-        st.dataframe(curve.assign(minute=curve.t / 60).set_index("minute").drop(columns="t"))
-        st.dataframe(events)
+    if m.failed:
+        st.warning(f"This match fails training filters ({', '.join(m.failed)}): read it with care.")
+    st.plotly_chart(match_figure(m), use_container_width=True)
+
+    left, right = st.columns([3, 2])
+    with left:
+        st.subheader("Map")
+        minute = st.slider(
+            "Minute", 0.0, m.duration_s / 60, min(10.0, m.duration_s / 60), step=0.25
+        )
+        st.plotly_chart(map_figure(m, minute * 60), use_container_width=True)
+    with right:
+        st.subheader("Teamfights")
+        fights = fight_table(m)
+        if fights.empty:
+            st.info("No teamfights (3+ deaths close together).")
+        else:
+            st.dataframe(fights, hide_index=True)
+        st.subheader("Players")
+        st.dataframe(player_table(m), hide_index=True)
+    with st.expander("Curve numbers"):
+        st.dataframe(m.points.assign(minute=m.points.t / 60).set_index("minute"))
 
 
 def live_page(live_model) -> None:

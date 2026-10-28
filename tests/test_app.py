@@ -1,10 +1,12 @@
 import numpy as np
 import pandas as pd
 import pytest
+import requests
 from test_gbm import synthetic
 from test_live import game
 
 from deadlock_predictor.app.helpers import (
+    api_error_message,
     history,
     live_states,
     live_table,
@@ -62,3 +64,23 @@ def test_plot_history(live_model):
         [live_states([game(7, start=0)], live_model, now=t) for t in np.arange(600, 900, 60)]
     )
     assert len(plot_history(states, 7).axes) == 2
+
+
+class FakeResponse:
+    def __init__(self, status, body):
+        self.status_code, self.body = status, body
+
+    def json(self):
+        return self.body
+
+
+def http_error(status, body=None):
+    return requests.HTTPError(response=FakeResponse(status, body or {}))
+
+
+def test_api_error_messages():
+    limited = http_error(429, {"error": {"next_request_in": 1790}})
+    assert "about 30 min" in api_error_message("5", limited)
+    assert "Steam is busy" in api_error_message("5", http_error(503))
+    assert api_error_message("5", http_error(404)) == "No match 5 on deadlock-api."
+    assert "boom" in api_error_message("5", ValueError("boom"))
