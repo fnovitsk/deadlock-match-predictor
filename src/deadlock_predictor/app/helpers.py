@@ -29,9 +29,9 @@ def live_table(states: pd.DataFrame) -> pd.DataFrame:
         {
             "match": states.match_id.astype(str),
             "minute": (states.t // 60).astype(int),
-            "souls lead (Team0)": states.net_worth_diff.astype(int),
-            "buildings lead (Team0)": states[OBJ_COLUMNS].sum(axis=1).astype(int),
-            "P(Team0 wins)": states.p.round(3),
+            "souls lead (Hidden King)": states.net_worth_diff.astype(int),
+            "buildings lead (Hidden King)": states[OBJ_COLUMNS].sum(axis=1).astype(int),
+            "P(Hidden King wins)": states.p.round(3),
         }
     )
     return table.sort_values("minute", ascending=False, ignore_index=True)
@@ -63,9 +63,9 @@ def plot_history(states: pd.DataFrame, match_id: int):
     ax.axhspan(0, 0.5, color="tab:blue", alpha=0.06)
     ax.axhline(0.5, color="grey", lw=0.8)
     ax.plot(minutes, states.p, marker=".", color="black")
-    ax.set(ylim=(0, 1), ylabel="P(Team0 wins)", title=f"Match {match_id} (live)")
+    ax.set(ylim=(0, 1), ylabel="P(Hidden King wins)", title=f"Match {match_id} (live)")
     bx.axhline(0, color="grey", lw=0.8)
     bx.plot(minutes, states.net_worth_diff, color="tab:green")
-    bx.set(xlabel="minute (since the match started)", ylabel="souls lead (Team0)")
+    bx.set(xlabel="minute (since the match started)", ylabel="souls lead (Hidden King)")
     fig.tight_layout()
     return fig

@@ -30,6 +30,9 @@ from deadlock_predictor.models.refit import cells, refit_path
 ROOT = Path(__file__).resolve().parents[3]
 CONFIG_PATH = ROOT / "configs" / "model.yaml"
 OUT_DIR = ROOT / "reports" / "curves"
+# Team0 is (most likely) the Hidden King, Team1 the Archmother: data keeps Team0/Team1,
+# plots show the in-game names.
+TEAM_NAMES = {"Team0": "Hidden King", "Team1": "Archmother"}
 TEAM_COLORS = {"Team0": "tab:orange", "Team1": "tab:blue"}
 
 # Feature groups for "what moved the probability" (SHAP contributions summed per group).
@@ -177,11 +180,17 @@ def plot_curve(curve, events, match_id, winner, duration_s, note="", fig=None):
         )
     end = duration_s / 60
     ax.axvline(end, color=TEAM_COLORS.get(winner, "grey"), lw=2)
-    ax.text(end, 0.5, f" {winner} wins", color=TEAM_COLORS.get(winner, "grey"), va="center")
+    ax.text(
+        end,
+        0.5,
+        f" {TEAM_NAMES.get(winner, winner)} wins",
+        color=TEAM_COLORS.get(winner, "grey"),
+        va="center",
+    )
     ax.set(
         ylim=(0, 1),
         xlim=(0, end + 2),
-        ylabel="P(Team0 wins)",
+        ylabel="P(Hidden King wins)",
     )
     ax.set_title(f"Match {match_id}{note}", pad=16)
     key = "   ".join(f"{label} {name}" for name, label in EVENT_LABELS.items())
@@ -206,7 +215,7 @@ def plot_curve(curve, events, match_id, winner, duration_s, note="", fig=None):
         bx.set(
             ylim=(-span, span),
             xlabel="minute",
-            ylabel="Δ logit since last point\n(+ = toward Team0)",
+            ylabel="Δ logit since last point\n(+ = toward Hidden King)",
         )
         bx.legend(fontsize=7, loc="upper left", bbox_to_anchor=(1.01, 1))
     else:

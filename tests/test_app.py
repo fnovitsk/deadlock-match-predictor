@@ -30,9 +30,9 @@ def test_live_table_lists_each_game(live_model):
     table = live_table(states)
     assert table.match.tolist() == ["7", "8"]  # longest game first
     assert table.minute.tolist() == [25, 15]
-    assert table["souls lead (Team0)"].tolist() == [20_000, 5_000]
-    assert table["buildings lead (Team0)"].tolist() == [1, 0]
-    assert ((table["P(Team0 wins)"] > 0) & (table["P(Team0 wins)"] < 1)).all()
+    assert table["souls lead (Hidden King)"].tolist() == [20_000, 5_000]
+    assert table["buildings lead (Hidden King)"].tolist() == [1, 0]
+    assert ((table["P(Hidden King wins)"] > 0) & (table["P(Hidden King wins)"] < 1)).all()
 
 
 def test_pick_game():

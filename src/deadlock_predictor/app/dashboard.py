@@ -4,7 +4,7 @@ Run: streamlit run src/deadlock_predictor/app/dashboard.py
 
 Two pages:
 - Match lookup: the win-probability curve of any finished ranked match (`viz.curve`).
-- Live games: ranked games in progress with the live model's P(Team0 wins), refreshed every
+- Live games: ranked games in progress with the live model's P(Hidden King wins), refreshed every
   minute; pick one to see its curve so far (from the collector's log, if it's running, and
   from the polls made while this page is open).
 """
