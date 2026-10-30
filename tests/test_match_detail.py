@@ -1,17 +1,15 @@
 import json
 
-import numpy as np
 from test_match import api_match
 
 from deadlock_predictor.data import match_detail as md
 
 
 def detail_match(**kwargs):
-    """`api_match` plus what only the API has: deaths, items, buffs and paths.
+    """`api_match` plus what only the API has: the death list.
 
     Slot 0 (Team0) kills slot 6 (Team1) at 300 s and 310 s; slot 7 dies to its own
-    team's slot 8 at 400 s (no enemy credit); slot 1 buys an item at 100 s and sells it
-    at 500 s; slot 2 picks up a buff at 200 s.
+    team's slot 8 at 400 s (no enemy credit).
     """
     info = api_match(**kwargs)
     deaths = {6: [(300, 0), (310, 0)], 7: [(400, 8)]}
@@ -25,34 +23,6 @@ def detail_match(**kwargs):
             }
             for t, killer in deaths.get(p["player_slot"], [])
         ]
-        p["items"] = (
-            [{"game_time_s": 100, "item_id": 555, "sold_time_s": 500}]
-            if p["player_slot"] == 1
-            else []
-        )
-        p["power_up_buffs"] = (
-            [{"type": "hp_permanent_pickup_lv2", "pickup_times_s": [200]}]
-            if p["player_slot"] == 2
-            else []
-        )
-    info["match_paths"] = {
-        "interval_s": 1.0,
-        "x_resolution": 100,
-        "y_resolution": 100,
-        "paths": [
-            {
-                "player_slot": slot,
-                "x_min": -1000.0,
-                "x_max": 1000.0,
-                "y_min": 0.0,
-                "y_max": 500.0,
-                "x_pos": [0, 50, 100],
-                "y_pos": [100, 100, 0],
-                "health": [100, 80, 0],
-            }
-            for slot in range(12)
-        ],
-    }
     return info
 
 
@@ -90,22 +60,6 @@ def test_deaths_credit_only_enemy_kills():
     assert (deaths.victim_team == "Team1").all()
 
 
-def test_items_and_buffs():
-    items = md.items(detail_match())
-    assert items[["slot", "t", "item_id", "sold_t"]].values.tolist() == [[1, 100, 555, 500]]
-    buffs = md.buffs(detail_match())
-    assert buffs[["slot", "t"]].values.tolist() == [[2, 200]]
-
-
-def test_paths_in_world_units():
-    paths = md.paths(detail_match())
-    one = paths[paths.slot == 0]
-    assert one.t.tolist() == [0, 1, 2]
-    assert np.allclose(one.x, [-1000, 0, 1000]) and np.allclose(one.y, [500, 500, 0])
-    assert (one.team == "Team0").all() and one.health.tolist() == [100, 80, 0]
-
-
 def test_missing_sections_give_empty_frames():
     info = api_match()
-    assert md.deaths(info).empty and md.items(info).empty and md.buffs(info).empty
-    assert md.paths(info).empty
+    assert md.deaths(info).empty

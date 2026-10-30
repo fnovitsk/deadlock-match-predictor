@@ -1,14 +1,12 @@
-# Data scope. Values confirmed in notebooks/01_explore_data.ipynb.
+# Data scope. Values confirmed in the Milestone 1 exploration (docs/learning-notes.md).
 source:
   manifest_url: https://data.deadlock-api.com/v1/manifest.json
-  table: match_player
 
 filters:
   match_mode: Ranked
   game_mode: Normal      # 6v6; the other main mode is StreetBrawl
   # Last major patch (api.deadlock-api.com/v1/patches/big-days); game_mode_version is constant.
   start_time: "2026-09-29T20:25:11Z"
-  end_time: null
 
 # Small local sample for exploration (Milestone 1).
 sample:
@@ -28,8 +26,3 @@ pipeline:
   split:
     train: 0.70          # oldest 70% of matches
     validation: 0.15     # next 15%; the newest 15% are test
-
-paths:
-  raw: data/raw
-  interim: data/interim
-  processed: data/processed

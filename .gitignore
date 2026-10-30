@@ -16,6 +16,9 @@ dist/
 .pytest_cache/
 .ruff_cache/
 
+# Claude Code (machine-specific preview config)
+.claude/
+
 # Jupyter
 .ipynb_checkpoints/
 
@@ -31,3 +34,7 @@ Thumbs.db
 
 # Generated plots
 reports/
+
+# Private notes (kept locally, not on GitHub)
+CLAUDE.md
+docs/

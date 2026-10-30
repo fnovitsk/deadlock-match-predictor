@@ -3,9 +3,10 @@
 The dump keeps 10 stats per player snapshot. The API's match metadata
 (`/v1/matches/{id}/metadata`, `data.match.fetch_match`) has much more:
 - every death, with its second, the killer and both positions;
-- every item purchase and sale, and permanent buff pickups;
-- ~50 stats per player snapshot;
-- every player's position and health once a second (`match_paths`).
+- ~50 stats per player snapshot.
+
+It also has item purchases, buff pickups and positions once a second (`match_paths`);
+parsers for those were removed with the views that used them (git history, M7/M8).
 
 `fetch_detail` caches the metadata in `data/matches/`. The parsers below turn it into
 frames with teams as 'Team0'/'Team1' and times in seconds of game time.
@@ -90,60 +91,3 @@ def deaths(info: dict) -> pd.DataFrame:
             )
     columns = ["t", "victim", "victim_team", "killer", "killer_team", "x", "y", "dead_s"]
     return pd.DataFrame(rows, columns=columns).sort_values("t", ignore_index=True)
-
-
-def items(info: dict) -> pd.DataFrame:
-    """Every item purchase: slot, team, t, item_id, sold_t (NaN if kept)."""
-    rows = [
-        {
-            "slot": p["player_slot"],
-            "team": TEAMS[p["team"]],
-            "t": float(i["game_time_s"]),
-            "item_id": i["item_id"],
-            "sold_t": float(i["sold_time_s"]) if i.get("sold_time_s") else np.nan,
-        }
-        for p in info["players"]
-        for i in p.get("items") or []
-    ]
-    columns = ["slot", "team", "t", "item_id", "sold_t"]
-    return pd.DataFrame(rows, columns=columns).sort_values("t", ignore_index=True)
-
-
-def buffs(info: dict) -> pd.DataFrame:
-    """Every permanent buff pickup: slot, team, t, type."""
-    rows = [
-        {"slot": p["player_slot"], "team": TEAMS[p["team"]], "t": float(t), "type": b["type"]}
-        for p in info["players"]
-        for b in p.get("power_up_buffs") or []
-        for t in b.get("pickup_times_s") or []
-    ]
-    columns = ["slot", "team", "t", "type"]
-    return pd.DataFrame(rows, columns=columns).sort_values("t", ignore_index=True)
-
-
-def paths(info: dict) -> pd.DataFrame:
-    """Every player's position (world units) and health (%) at each sampled second."""
-    team_of = {p["player_slot"]: TEAMS[p["team"]] for p in info["players"]}
-    mp = info.get("match_paths") or {}
-    step = float(mp.get("interval_s") or 1)
-    xres, yres = mp.get("x_resolution"), mp.get("y_resolution")
-    frames = []
-    for path in mp.get("paths") or []:
-        x = np.asarray(path["x_pos"], dtype=float)
-        y = np.asarray(path["y_pos"], dtype=float)
-        frames.append(
-            pd.DataFrame(
-                {
-                    "slot": path["player_slot"],
-                    "team": team_of.get(path["player_slot"]),
-                    "t": np.arange(len(x)) * step,
-                    # Positions are quantized to the player's bounding box.
-                    "x": path["x_min"] + x / xres * (path["x_max"] - path["x_min"]),
-                    "y": path["y_min"] + y / yres * (path["y_max"] - path["y_min"]),
-                    "health": np.asarray(path["health"], dtype=float),
-                }
-            )
-        )
-    if not frames:
-        return pd.DataFrame(columns=["slot", "team", "t", "x", "y", "health"])
-    return pd.concat(frames, ignore_index=True)

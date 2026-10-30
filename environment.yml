@@ -28,7 +28,6 @@ dependencies:
   - pytest
   - ruff
   - pre-commit
-  - nbstripout
   - pip
   - pip:
       - -e .
