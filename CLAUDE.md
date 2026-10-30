@@ -1,11 +1,11 @@
 # CLAUDE.md
 
-Notes for Claude Code working in this repo.
+Notes for Claude Code working in this repo. **Start with `docs/project-map.md`**: what every file and folder is for, the state of each milestone, and the open threads. This file holds the facts and gotchas.
 
 ## Project
-Deadlock win-probability predictor. Given the game state at time t (net worth, kills, objectives, heroes, game time), predict P(team 0 wins). V1 produces historical win-probability curves; exploration happens in Jupyter notebooks.
+Deadlock win-probability predictor. Given the game state at time t (net worth, kills, objectives, heroes, game time), predict P(team 0 wins). The app is one Streamlit page: look up any finished ranked match and see its scoreboard, win-probability curve, key moments and per-player stats.
 
-Data: deadlock-api.com Parquet dumps (manifest: https://data.deadlock-api.com/v1/manifest.json), queried with DuckDB via `deadlock_predictor.data.dumps`. Scope: ranked 6v6 since the last major patch (`configs/data.yaml`). Full findings: `notebooks/01_explore_data.ipynb`. CI (`.github/workflows/ci.yml`) runs ruff and pytest on PRs.
+Data: deadlock-api.com Parquet dumps (manifest: https://data.deadlock-api.com/v1/manifest.json), queried with DuckDB via `deadlock_predictor.data.dumps`. Scope: ranked 6v6 since the last major patch (`configs/data.yaml`). CI (`.github/workflows/ci.yml`) runs ruff and pytest on PRs.
 
 Data facts:
 - The dump server and API return 403 to Python's default user agent; always use `dumps.USER_AGENT` / `dumps.connect()`.
@@ -26,7 +26,7 @@ Pipeline (`python -m deadlock_predictor.data.pipeline [--force] [--skip-extract]
 - `data.extract` → `data/raw/match_player/partition=<N>.parquet` (skips finished partitions, refreshes the newest 2).
 - `features.snapshots` filters matches (6+6 players, no abandon, scored, has winner) and builds one row per (match, t): `FEATURES`, `LABEL` (`team0_win`), all diffs Team0 − Team1.
 - `data.split` adds `split` by start time (70/15/15 train/validation/test).
-- Output: `data/processed/snapshots.parquet` and `summary.json`. Notebook 02 checks it. Analyse on train only.
+- Output: `data/processed/snapshots.parquet` and `summary.json`. Analyse on train only.
 
 Models (`src/deadlock_predictor/models/`, settings in `configs/model.yaml`):
 - `train_baseline` → `models/baseline*.joblib` (sections `baseline`: rungs 1-4, `baseline_heroes`: rungs 5-6); `train_gbm` → `models/gbm*.joblib` and `models/final.json` (pick among 4 cells, simplest within 0.0005); `refit` → `*_refit.joblib` on train + validation; `evaluate_test` → `models/test_metrics.json` (refuses to rerun without `--force`).
@@ -39,34 +39,33 @@ Models (`src/deadlock_predictor/models/`, settings in `configs/model.yaml`):
 - LightGBM uses `n_jobs: 8`: all 16 threads at full load crashed the machine once.
 - DuckDB 2.0 (what CI installs) has no `fetchone()` on relations: use `.fetchall()[0]`.
 - `t` is unsigned in the data: convert to float before arithmetic or nearest-value lookups.
-- `refit --all` → `*_deploy.joblib` on all splits: what the curves use. Nothing is left to score them on.
+- `refit --all` → `*_deploy.joblib` on all splits: what the app and curves use. Nothing is left to score them on.
 
 Curves (`python -m deadlock_predictor.viz.curve <match_id>` → `reports/curves/`, gitignored):
 - `data.match.match_rows`: local dump first (`local_rows`), else `api.deadlock-api.com/v1/matches/{id}/metadata` converted to dump rows (`api_rows`); `register` loads rows into DuckDB with VARCHAR[] list types, then the training feature code runs unchanged (`filter_matches(keep_failing=True)` keeps a match that fails a filter and reports it).
 - API vs dump: team 0/1 → 'Team0'/'Team1'; `team_objective_id` 0 Core, 1-4 Tier1Lane1-4, 5-8 Tier2Lane1-4, 9 Titan, 10-11 TitanShieldGenerator1-2, 12-15 BarrackBossLane1-4; match_mode 4 = Ranked, game_mode 1 = Normal. The API has no lobby badge: `lobby_badge` recomputes it from players' `initial_display_rank` (mean on the tier·6 + subtier scale, unranked skipped, rounded half up). Features matched the dump on every sampled match.
-- Events use the in-game names (`viz.curve.EVENT_NAMES`): Tier1 = Lane Guardian, Tier2 = Walker, BarrackBoss = Base Guardian, TitanShieldGenerator = Shrine, Titan = Patron Downed. Team0 is most likely the Hidden King and Team1 the Archmother (deadlock-api.com lists them in that order, with the same small side edge as Team0); not confirmed in the API docs.
+- Events use the in-game names (`viz.curve.EVENT_NAMES`): Tier1 = Lane Guardian, Tier2 = Walker, BarrackBoss = Base Guardian, TitanShieldGenerator = Shrine, Titan = Patron Downed. Team0 is shown as the Hidden King (amber) and Team1 as the Archmother (sapphire): deadlock-api.com lists them in that order, with the same small side edge as Team0; not confirmed in the API docs.
 - `/v1/matches/recently-fetched` lists recent matches (for fresh, never-seen data).
 - `models.data.predict_saved(saved, df, heroes=...)` takes hero picks directly for matches not in `heroes.parquet`.
 
-Live model and dashboard (M6; the live page was removed in M8, see git history `feat/match-ui`; the live model and its CLI tools stay):
-- `/v1/matches/active`: per team `net_worth` and `objectives_mask`, per player `hero_id`, `abandoned`; plus `start_time`. No kills, levels, damage, mid-boss or rank. Ranked 6v6 = `match_mode_parsed == "Ranked"` and `game_mode_parsed == "KECitadelGameModeNormal"`. Mask bit i set = objective i still standing (verified 63,009/63,009); unused lane-2 bits are always set.
-- `data.live.live_state` builds the live model's inputs. Game time = `now − start_time − PREGAME_S` (210 s of pre-game; found by `live.score`'s clock check). The live model (`gbm_live`: t, net worth, 5 objective diffs, heroes): validation 0.5259; deploy version scored live 0.503 on 421 games.
-- `/active` sits behind a CDN cache (`max-age=120, stale-while-revalidate=120`): a new version every ~2 min, 15–120 s old when read (`Last-Modified` = its time). Polling every 60 s logs each version twice; `PREGAME_S` was fitted on poll time, so it includes ~65 s of cache age.
-- No live history anywhere: the broadcast (`/v1/matches/{id}/live/url`, 64 tps, ~3-s fragments) keeps fragment 0 and only the last ~90 s; `/v1/matches/demo/live/query` (SQL over the broadcast, SSE; unquoted table names, double-quoted columns) streams from now. Spectating costs 6/h per IP without a key. The broadcast has per-player net worth, kills, deaths, level, damage, healing and the game clock (`m_flGameStartTime`, paused ticks) at ~22 s delay.
-- `live.collect` logs polls to `data/live/<UTC date>.parquet`; `live.score` writes `matches.parquet`, `scored.parquet`, `scores.json` next to them (`load()` reads only the dated logs).
-- Dashboard: `streamlit run src/deadlock_predictor/app/dashboard.py`, match lookup only (`app/helpers.py` has the tested API error messages). Streamlit doesn't reload imported modules: restart it after editing them.
-
-Match explorer (M7):
-- `data.match_detail.fetch_detail` caches API metadata in `data/matches/<id>.json`; parsers: `players`, `player_stats` (~50 stats/snapshot, final included), `deaths` (killer None unless an enemy player), `items`, `buffs`, `paths` (x/y per second: `x_min + x_pos / x_resolution · (x_max − x_min)`, per player).
+Match page (M7 explorer + M8 UI; `streamlit run src/deadlock_predictor/app/dashboard.py`):
+- `viz.explorer.load_match` → `Match`: API metadata, snapshot rows, curve points, fights, players. `app/match_page.py` draws it: scoreboard HTML, time range in `st.session_state["range_<id>"]`, key moments (`viz/moments.py`), per-player stats. Charts in `viz/charts.py` (`win_probability` with objective icons from `viz/icons.py`, `moves`, `souls`, `souls_lead`), all styled with `viz.theme`'s `deadlock_dark` template; `.streamlit/config.toml` sets the dark page.
+- `data.match_detail.fetch_detail` caches API metadata in `data/matches/<id>.json`; parsers: `players`, `player_stats` (~50 stats/snapshot, final included), `deaths` (killer None unless an enemy player). The metadata also has items, buffs and per-second positions (`match_paths`); their parsers were removed with the views that used them (git history, `feat/match-ui`).
 - The API serves processed matches at once; unprocessed ones go to Steam: 503 "Steam is busy", 429 at 3 requests/hour/IP. Don't retry in a loop.
 - Stats `kills` ≠ death list (28 vs 24 in one match): `viz.timeline.features_at` anchors kills to snapshots and adds death-list kills since.
 - `features_at` equals the training rows at snapshots (tested). Pass `stats` so building souls (`gold_boss`) step in at the event (`bounty_steps`): without it, early buildings move the curve the wrong way (mediator effect).
 - Fights (`viz.fights`): `configs/model.yaml` → `explorer:` (20 s, 3,000 units, 3+ deaths).
-- Hero and item names: `data.assets` (`hero_name`, `item_name`) from `api.deadlock-api.com/v1/assets/heroes` and `/items`, cached in `data/assets/` (delete to refresh after a game update). `assets.deadlock-api.com` no longer exists.
-- Match page (M8): `app/match_page.py` (scoreboard HTML, time range in `st.session_state["range_<id>"]`, key moments, per-player stats), charts in `viz/charts.py` (`win_probability`, `moves`, `souls`, `souls_lead`; all styled with `viz.theme`'s `deadlock_dark` template; `.streamlit/config.toml` sets the dark page), `viz/moments.py`. A player timeline, final builds, fights tab and map replay were built and then removed at the user's request (see git history, `feat/match-ui`).
-- `data.assets`: `hero(id)` (name, `style_hex` colour, portrait data URI), `item(id)` (tier 1-5, cost, slot type, icon; purchases also include ability unlocks, `shop=False`), `rank(badge)`. Images cached in `data/assets/images/`.
-- If the map comes back: the minimap image (`/v1/assets/map`, radius 10,752, spans ±radius, y up) lines up with `match_paths` positions, but the asset's `objective_positions` don't; building positions had to be estimated from where buildings fall. Big Plotly animations: build frames as plain dicts (validation dominates the time).
+- `data.assets` (from `api.deadlock-api.com/v1/assets/heroes` and `/ranks`, cached in `data/assets/`, images in `data/assets/images/`; delete to refresh after a game update): `hero(id)` (name, `style_hex` colour, portrait data URI), `hero_name`, `rank(badge)`. `assets.deadlock-api.com` no longer exists.
+- Removed views (player timeline, final builds, fights tab, map replay, live page) are in the git history of `feat/match-ui`. If the map comes back: the minimap (`/v1/assets/map`, radius 10,752, y up) lines up with `match_paths`, but the asset's `objective_positions` don't.
 - Plotly shapes on a subplot with no traces yet are dropped: pass `exclude_empty_subplots=False`. Static PNGs for checking need `kaleido` (install with `pip --target` into the scratchpad, not the env).
+- Streamlit doesn't reload imported modules: restart it after editing them. `app/helpers.py` holds the tested API error messages.
+
+Live model (M6; kept, not in the app; the live page was removed in M8):
+- `/v1/matches/active`: per team `net_worth` and `objectives_mask`, per player `hero_id`, `abandoned`; plus `start_time`. No kills, levels, damage, mid-boss or rank. Ranked 6v6 = `match_mode_parsed == "Ranked"` and `game_mode_parsed == "KECitadelGameModeNormal"`. Mask bit i set = objective i still standing (verified 63,009/63,009); unused lane-2 bits are always set.
+- `data.live.live_state` builds the live model's inputs. Game time = `now − start_time − PREGAME_S` (210 s; found by `live.score`'s clock check). The live model (`gbm_live`: t, net worth, 5 objective diffs, heroes): validation 0.5259; deploy version scored live 0.503 on 421 games.
+- `/active` sits behind a CDN cache (`max-age=120, stale-while-revalidate=120`): a new version every ~2 min, 15–120 s old when read (`Last-Modified` = its time). Polling every 60 s logs each version twice; `PREGAME_S` was fitted on poll time, so it includes ~65 s of cache age.
+- No live history anywhere: the broadcast (`/v1/matches/{id}/live/url`, 64 tps, ~3-s fragments) keeps fragment 0 and only the last ~90 s; `/v1/matches/demo/live/query` (SQL over the broadcast, SSE; unquoted table names, double-quoted columns) streams from now. Spectating costs 6/h per IP without a key. The broadcast has per-player net worth, kills, deaths, level, damage, healing and the game clock (`m_flGameStartTime`, paused ticks) at ~22 s delay.
+- `live.collect` logs polls to `data/live/<UTC date>.parquet`; `live.score` writes `matches.parquet`, `scored.parquet`, `scores.json` next to them (`load()` reads only the dated logs).
 
 ## Commands
 Conda is not on PATH in Claude's shell: use `C:\Users\fnovi\miniconda3\Scripts\conda.exe`. `gh` is not on PATH either: `C:\Program Files\GitHub CLI\gh.exe`.
@@ -75,22 +74,20 @@ Conda is not on PATH in Claude's shell: use `C:\Users\fnovi\miniconda3\Scripts\c
 - Lint/format: `conda run -n deadlock ruff check .` / `ruff format .`
 - All hooks: `conda run -n deadlock pre-commit run --all-files`
 - Env update: `conda env update -n deadlock -f environment.yml --prune --solver=libmamba` (the classic solver hangs)
+- Preview server for Claude: `.claude/launch.json` (gitignored) defines `dashboard` on port 8501.
 
 Environment gotchas:
 - The user's system Python 3.11 has `--user` packages that shadow the env's; `PYTHONNOUSERSITE=1` is set in `environment.yml` and the `deadlock` kernel spec. Keep it.
 - Windows PowerShell 5.1 can't open paths over 260 chars (the scratchpad path is longer); pipe code to `python -` instead.
 - numpy uses OpenBLAS (pinned in `environment.yml`): MKL crashes Jupyter kernels, which start without conda activation.
-- Run nbconvert as `python -m nbconvert` from the env; `jupyter.exe` dispatches to the system Python's subcommands.
-- Execute notebooks into `data/interim/` (gitignored) to inspect outputs: `python -m nbconvert --to notebook --execute <nb> --ExecutePreprocessor.kernel_name=deadlock --output-dir data/interim`.
 
 ## Conventions
-- Reusable logic lives in `src/deadlock_predictor/`; notebooks import from it and stay exploratory.
-- Never commit data, models, or secrets (`data/`, `models/`, `*.parquet`, `.env` are gitignored).
-- Notebook outputs are stripped on commit by nbstripout.
+- Reusable logic lives in `src/deadlock_predictor/`. Analysis notebooks are no longer tracked: the user keeps executed copies locally in `data/interim/`, and the originals are in git history (before commit `1b91a30`).
+- Never commit data, models, or secrets (`data/`, `models/`, `*.parquet`, `.env`, `.claude/` are gitignored).
 - Avoid leakage: split train/test **by match** (never by row) and **by date** (train older, test newer). Add tests that enforce this.
 - Always compare new models against the baseline using log loss, Brier score, and calibration.
 
 ## Git workflow
-- `main` always works. One branch per milestone (`feat/<name>`), merged by GitHub PR via `gh`.
+- `main` always works. One branch per milestone (`feat/<name>`), merged by GitHub PR via `gh`. Delete milestone branches once merged.
 - Small, focused commits with imperative messages ("Add snapshot extractor").
 - Confirm with the user before pushing or merging.

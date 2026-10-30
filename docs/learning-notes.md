@@ -2,6 +2,8 @@
 
 Concepts and decisions, milestone by milestone.
 
+> The notebooks named below (`notebooks/0N_*.ipynb`) were removed from the repo after Milestone 8; they're in the git history (before commit `1b91a30`).
+
 ## Milestone 0 — Project setup
 
 **The prediction problem.** Each match contributes many training examples: one per stat snapshot. An example is the game state at time t (net worth gap, kills, objectives, heroes, game time), labeled 1 if team 0 eventually won. The model learns P(team 0 wins | state at t), and team 1's probability is 1 minus that. Plotting it across a match's snapshots gives the win-probability curve.
@@ -12,7 +14,7 @@ Concepts and decisions, milestone by milestone.
 
 **Git hygiene.**
 - Data and models are large and can be regenerated, so they're gitignored. The repo holds the code that produces them.
-- `nbstripout` removes notebook outputs on commit so diffs show code changes, not megabytes of plots.
+- `nbstripout` removed notebook outputs on commit so diffs showed code changes, not megabytes of plots (dropped with the notebooks after M8).
 - `pre-commit` runs checks (ruff lint/format, large-file guard) before each commit is created.
 - `main` always works. Each milestone is developed on its own branch and merged through a pull request.
 
