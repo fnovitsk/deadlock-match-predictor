@@ -21,7 +21,6 @@ from deadlock_predictor.data.match import OBJECTIVES
 from deadlock_predictor.features.snapshots import OBJECTIVE_GROUPS
 
 ACTIVE_URL = "https://api.deadlock-api.com/v1/matches/active"
-OBJ_COLUMNS = [f"obj_{g}_diff" for g in OBJECTIVE_GROUPS.values()]
 # `start_time` is ~210 s before the game clock starts (the pre-game). Measured by
 # `live.score`'s clock check on 413 finished games: live team net worth matched the
 # post-game snapshots within 6% at this offset, against 25% without it.

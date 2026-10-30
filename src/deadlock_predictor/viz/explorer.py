@@ -2,7 +2,7 @@
 
 `load_match` gathers the API metadata, the training snapshot rows, the win probability at
 every snapshot, building, mid-boss and fight (`viz.timeline`), the fights (`viz.fights`),
-and hero and item details (`data.assets`). The charts are in `viz.charts` and
+and hero details (`data.assets`). The charts are in `viz.charts` and
 the page that shows them in `app.match_page`.
 """
 
@@ -15,7 +15,7 @@ import pandas as pd
 import yaml
 
 from deadlock_predictor.data import match_detail as md
-from deadlock_predictor.data.assets import hero, item
+from deadlock_predictor.data.assets import hero
 from deadlock_predictor.data.match import TEAMS, api_rows, lobby_badge
 from deadlock_predictor.viz.curve import (
     CONFIG_PATH,
@@ -43,9 +43,6 @@ class Match:
     players: pd.DataFrame
     stats: pd.DataFrame
     deaths: pd.DataFrame
-    items: pd.DataFrame  # with name, tier, cost, slot_type, icon, shop
-    buffs: pd.DataFrame
-    paths: pd.DataFrame
     events: pd.DataFrame  # buildings and mid-boss
     fights: pd.DataFrame  # with p_before / p_after
     points: pd.DataFrame  # the curve: t, kind, trigger, p_final, p_baseline, groups
@@ -61,15 +58,6 @@ def _players(info: dict) -> pd.DataFrame:
     for key in ("kills", "deaths", "assists"):
         players[key] = [int(totals[s].get(key) or 0) for s in players.slot]
     return players
-
-
-def _items(info: dict) -> pd.DataFrame:
-    items = md.items(info)
-    details = [item(i) for i in items.item_id]
-    for field in ("name", "tier", "cost", "icon", "shop"):
-        items[field] = [getattr(d, field) for d in details]
-    items["slot_type"] = [d.slot for d in details]  # weapon / vitality / spirit
-    return items
 
 
 def load_match(match_id: int, models: dict | None = None, config: dict | None = None) -> Match:
@@ -116,9 +104,6 @@ def load_match(match_id: int, models: dict | None = None, config: dict | None = 
         players=_players(info),
         stats=stats,
         deaths=deaths,
-        items=_items(info),
-        buffs=md.buffs(info),
-        paths=md.paths(info),
         events=objective_events(rows),
         fights=found,
         points=points,
@@ -150,23 +135,6 @@ def state_at(m: Match, times) -> pd.DataFrame:
         out[f"kills_{team_name}"] = [(kt <= t).sum() for t in times]
         out[f"buildings_{team_name}"] = [(bt <= t).sum() for t in times]
     return out
-
-
-def fight_table(m: Match) -> pd.DataFrame:
-    f = m.fights
-    if f.empty:
-        return pd.DataFrame()
-    names = dict(zip(m.players.slot, m.players.hero, strict=True))
-    return pd.DataFrame(
-        {
-            "time": [f"{clock(s)}–{clock(e)}" for s, e in zip(f.start, f.end, strict=True)],
-            "result": f.label,
-            "P before": f.p_before.round(2),
-            "P after": f.p_after.round(2),
-            "change": (f.p_after - f.p_before).round(2),
-            "died": [", ".join(names[v] for v in vs) for vs in f.victims],
-        }
-    )
 
 
 def player_table(m: Match) -> pd.DataFrame:

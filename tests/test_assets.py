@@ -15,8 +15,8 @@ def test_load_without_network_gives_nothing(tmp_path, monkeypatch):
         raise requests.ConnectionError("no route")
 
     monkeypatch.setattr(assets.requests, "get", offline)
-    assert assets.load("items", tmp_path) == []
-    assert not (tmp_path / "items.json").exists()
+    assert assets.load("ranks", tmp_path) == []
+    assert not (tmp_path / "ranks.json").exists()
 
 
 def test_names_fall_back_to_ids(monkeypatch):
@@ -55,7 +55,7 @@ def test_image_without_network(tmp_path, monkeypatch):
     assert assets.image(None, tmp_path) is None
 
 
-def test_hero_and_item_details(monkeypatch):
+def test_hero_details(monkeypatch):
     heroes = {
         7: {
             "id": 7,
@@ -64,30 +64,13 @@ def test_hero_and_item_details(monkeypatch):
             "images": {},
         }
     }
-    items = {
-        5: {
-            "id": 5,
-            "name": "Extended Magazine",
-            "type": "upgrade",
-            "item_tier": 1,
-            "cost": 800,
-            "item_slot_type": "weapon",
-        },
-        6: {"id": 6, "name": "Some Ability", "type": "ability"},
-    }
     monkeypatch.setattr(assets, "_heroes_by_id", lambda: heroes)
-    monkeypatch.setattr(assets, "_items_by_id", lambda: items)
     monkeypatch.setattr(assets, "image", lambda url: None)
-    for f in (assets.hero, assets.item):
-        f.cache_clear()
+    assets.hero.cache_clear()
     h = assets.hero(7)
     assert (h.name, h.color) == ("Wraith", "#ff0010")
     assert assets.hero(99).name == "Hero 99"
-    magazine, ability = assets.item(5), assets.item(6)
-    assert (magazine.tier, magazine.cost, magazine.slot, magazine.shop) == (1, 800, "weapon", True)
-    assert not ability.shop and ability.tier == 0
-    for f in (assets.hero, assets.item):
-        f.cache_clear()
+    assets.hero.cache_clear()
 
 
 def test_rank(monkeypatch):
