@@ -11,7 +11,7 @@ The model is trained on historical match data: every in-game stat snapshot (net 
 | # | Milestone | Output |
 |---|-----------|--------|
 | 0 | Project setup | Repo, environment, conventions |
-| 1 | Data exploration | Data scope and findings (`docs/learning-notes.md`) |
+| 1 | Data exploration | Data scope (`configs/data.yaml`) |
 | 2 | Data pipeline | Clean snapshot table (Parquet) |
 | 3 | Baseline model | Logistic regression + calibration |
 | 4 | Better model | Richer features + LightGBM |
@@ -115,21 +115,19 @@ The dashboard (dark theme) shows, for any ranked 6v6 match:
 
 Between stat snapshots, souls and other stats are interpolated, with building souls added when the building falls. At the snapshots themselves, the curve is exactly the trained model.
 
-Match details come from the deadlock-api.com API and are cached in `data/matches/`. Matches it hasn't processed yet are fetched from Steam, which allows only a few requests per hour. Hero and rank names and images come from the API's `/v1/assets` (cached in `data/assets/`).
+Match details come from the deadlock-api.com API and are cached in `data/matches/`. Matches it hasn't processed yet are fetched from Steam, which allows only a few requests per hour. Hero names and portraits, and rank names, come from the API's `/v1/assets` (cached in `data/assets/`).
 
 ## Project layout
 
 ```
 configs/                 settings (data scope, features)
 data/                    local data, not committed (raw/, interim/, processed/, matches/, assets/, live/)
-docs/project-map.md      what every file and folder is for, and the open threads
-docs/learning-notes.md   ML concepts and decisions, milestone by milestone
 models/                  trained models, not committed
 src/deadlock_predictor/  package: data/, features/, models/, viz/, live/, app/
 tests/                   pytest
 ```
 
-The analysis notebooks of milestones 1–7 were removed from the repo; they're in the git history (before commit `1b91a30`). Their findings are in `docs/learning-notes.md`.
+The analysis notebooks of milestones 1–7 were removed from the repo; they're in the git history (before commit `1b91a30`).
 
 ## Data
 

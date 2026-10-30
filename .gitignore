@@ -34,3 +34,7 @@ Thumbs.db
 
 # Generated plots
 reports/
+
+# Private notes (kept locally, not on GitHub)
+CLAUDE.md
+docs/
