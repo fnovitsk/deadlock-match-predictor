@@ -18,7 +18,7 @@ The model is trained on historical match data: every in-game stat snapshot (net 
 | 5 | Win-probability curves | Plot for any match ID |
 | 6 | Dashboard and live predictions | Streamlit app, live model, collector and scorer |
 | 7 | Match explorer | Interactive per-player view of a match |
-| 8 | Match page UI | Scoreboard, key moments, per-player stats, dark theme |
+| 8 | Match page UI | Scoreboard, key moments, per-player stats, dark theme; live page dropped |
 
 ## Setup
 
@@ -78,15 +78,22 @@ python -m deadlock_predictor.viz.curve <match_id>    # saves reports/curves/<mat
 
 Works for any ranked 6v6 match: from the local dump if it's there, otherwise fetched from the deadlock-api.com API (including matches played today). The chart shows P(Hidden King wins) at each stat snapshot (every 3–5 minutes) for the final model and the baseline, the buildings (Lane Guardians, Walkers, Base Guardians, Shrines, Patron) and mid-boss claims in between, and what moved the prediction since the previous snapshot. `notebooks/05_win_curves.ipynb` shows examples and checks the curves.
 
-## Dashboard and live games
+## Dashboard
 
 ```bash
-python -m deadlock_predictor.models.train_gbm --section gbm_live   # once: the live model
 python -m deadlock_predictor.models.refit --all                    # once: deploy versions
 streamlit run src/deadlock_predictor/app/dashboard.py
 ```
 
-Two pages: **Match lookup** opens the match explorer for any finished match (below), and **Live games** lists ranked games in progress with the live model's win probability, refreshed every minute. Click a game or type a match id to follow its curve. The live model sees only what a game in progress shows (souls, buildings, heroes): validation log loss 0.526 against 0.518 for the full model.
+The dashboard is the match page (below) for any finished match. A live games page was tried and removed: the API only shows a game's current state (cached for 2 minutes), so a game's curve could only start when someone began recording it.
+
+## Live model (not in the app)
+
+The live model sees only what a game in progress shows (souls, buildings, heroes): validation log loss 0.526 against 0.518 for the full model. It's kept for later, with the tools to collect and score live predictions:
+
+```bash
+python -m deadlock_predictor.models.train_gbm --section gbm_live   # once: the live model
+```
 
 To check live predictions against real results:
 
@@ -99,7 +106,7 @@ On 421 games: live log loss **0.503**, well calibrated. `notebooks/06_live.ipynb
 
 ## Match page
 
-The dashboard's **Match lookup** (dark theme) shows, for any ranked 6v6 match:
+The dashboard (dark theme) shows, for any ranked 6v6 match:
 - **Scoreboard:** hero portraits with each player's K/D/A, souls, level, hero damage and healing, the result and the lobby's rank.
 - **Win probability:** at every stat snapshot and at every building, mid-boss and teamfight. Fights are shaded, and hovering shows the score and souls lead at that moment. Under it, what moved each step.
 - **Key moments:** the biggest swings, what caused them, and a button to zoom there.

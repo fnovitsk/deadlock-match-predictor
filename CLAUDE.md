@@ -48,11 +48,13 @@ Curves (`python -m deadlock_predictor.viz.curve <match_id>` → `reports/curves/
 - `/v1/matches/recently-fetched` lists recent matches (for fresh, never-seen data).
 - `models.data.predict_saved(saved, df, heroes=...)` takes hero picks directly for matches not in `heroes.parquet`.
 
-Live games and dashboard (M6):
+Live model and dashboard (M6; the live page was removed in M8, see git history `feat/match-ui`; the live model and its CLI tools stay):
 - `/v1/matches/active`: per team `net_worth` and `objectives_mask`, per player `hero_id`, `abandoned`; plus `start_time`. No kills, levels, damage, mid-boss or rank. Ranked 6v6 = `match_mode_parsed == "Ranked"` and `game_mode_parsed == "KECitadelGameModeNormal"`. Mask bit i set = objective i still standing (verified 63,009/63,009); unused lane-2 bits are always set.
 - `data.live.live_state` builds the live model's inputs. Game time = `now − start_time − PREGAME_S` (210 s of pre-game; found by `live.score`'s clock check). The live model (`gbm_live`: t, net worth, 5 objective diffs, heroes): validation 0.5259; deploy version scored live 0.503 on 421 games.
+- `/active` sits behind a CDN cache (`max-age=120, stale-while-revalidate=120`): a new version every ~2 min, 15–120 s old when read (`Last-Modified` = its time). Polling every 60 s logs each version twice; `PREGAME_S` was fitted on poll time, so it includes ~65 s of cache age.
+- No live history anywhere: the broadcast (`/v1/matches/{id}/live/url`, 64 tps, ~3-s fragments) keeps fragment 0 and only the last ~90 s; `/v1/matches/demo/live/query` (SQL over the broadcast, SSE; unquoted table names, double-quoted columns) streams from now. Spectating costs 6/h per IP without a key. The broadcast has per-player net worth, kills, deaths, level, damage, healing and the game clock (`m_flGameStartTime`, paused ticks) at ~22 s delay.
 - `live.collect` logs polls to `data/live/<UTC date>.parquet`; `live.score` writes `matches.parquet`, `scored.parquet`, `scores.json` next to them (`load()` reads only the dated logs).
-- Dashboard: `streamlit run src/deadlock_predictor/app/dashboard.py` (logic in `app/helpers.py`, tested). Streamlit doesn't reload imported modules: restart it after editing them. Widgets inside the auto-refreshing fragment must not have options that change each poll (they reset).
+- Dashboard: `streamlit run src/deadlock_predictor/app/dashboard.py`, match lookup only (`app/helpers.py` has the tested API error messages). Streamlit doesn't reload imported modules: restart it after editing them.
 
 Match explorer (M7):
 - `data.match_detail.fetch_detail` caches API metadata in `data/matches/<id>.json`; parsers: `players`, `player_stats` (~50 stats/snapshot, final included), `deaths` (killer None unless an enemy player), `items`, `buffs`, `paths` (x/y per second: `x_min + x_pos / x_resolution · (x_max − x_min)`, per player).

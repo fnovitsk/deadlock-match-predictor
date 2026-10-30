@@ -172,3 +172,13 @@ One shared time range keeps them in sync, which is what the single figure was fo
 **Performance is part of the design.** The replay had 561 frames. Building them as validated Plotly objects took 12 s. Plain dicts plus positions held as a players × seconds array took 3 s. Images are embedded as data URIs, so the page doesn't depend on the asset host once cached.
 
 **Less can be more.** After seeing the full page, the player timeline, final builds, the fights tab and the map replay were removed. The page kept the scoreboard, the curve with its key moments, and per-player stats. Building a view is the cheapest way to find out whether it earns its place. Everything removed is in the git history of `feat/match-ui` if it's ever wanted back.
+
+**Why the live page was dropped.** A game watched from minute 20 showed a flat curve for minutes 20–21.5 only, while the in-game clock said 24. Checking it end to end:
+- **The model was fine:** live log loss 0.503 on 421 finished games.
+- **You can't backfill a stream you didn't record.** `/v1/matches/active` gives only the current state. The live broadcast (what spectators watch) keeps its first fragment and then only the last ~90 s. deadlock-api's live SQL query streams from "now". So a game's curve starts when something starts recording it. The only way round that is a collector running all the time.
+- **Observation time vs wall time.** The API sits behind a CDN cache (`max-age=120, stale-while-revalidate=120`), so each version is 15–120 s old when read. We stamped rows with our own clock, so:
+  - minute polls of a 2-minute cache logged each version twice, at two different times (49% of rows were repeats), which drew flat steps;
+  - the cache age (~65 s on average) ended up inside the fitted `PREGAME_S = 210`.
+
+  A feature row should carry the time its values were *measured*: here, the response's `Last-Modified` header.
+- **A product decision follows from what the data source allows.** A live view that starts mid-game, minutes behind the real clock, wasn't worth its cost in this app. The live model and its tooling (`data.live`, `live.collect`, `live.score`, notebook 06) stay, in case a better live source appears.
