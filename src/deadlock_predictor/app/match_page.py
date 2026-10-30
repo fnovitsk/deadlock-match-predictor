@@ -19,7 +19,6 @@ CSS = f"""
 .dl-banner {{display:flex; align-items:center; gap:18px; margin:4px 0 14px 0;}}
 .dl-banner .result {{font-size:1.7rem; font-weight:700;}}
 .dl-banner .meta {{color:{MUTED}; font-size:0.95rem;}}
-.dl-banner img {{height:42px;}}
 .dl-team {{background:{PANEL}; border-radius:10px; padding:10px 12px;
   border-top:4px solid var(--team);}}
 .dl-team h4 {{margin:0 0 6px 0; color:var(--team); display:flex; justify-content:space-between;}}
@@ -55,7 +54,7 @@ def scoreboard(m: Match) -> str:
     table["portrait"] = m.players.portrait.to_numpy()
     table["team_key"] = m.players.team.to_numpy()
     best = max(table.souls.max(), 1)
-    rank_name, rank_img = rank(m.badge) if m.badge else ("", None)
+    rank_name = rank(m.badge) if m.badge else ""
     meta = f"{clock(m.duration_s)} · match {m.match_id}" + (
         f" · {rank_name} lobby" if rank_name else ""
     )
@@ -63,7 +62,7 @@ def scoreboard(m: Match) -> str:
     out = [
         CSS,
         f'<div class="dl-banner"><div class="result" style="color:{TEAM_COLORS[winner]}">'
-        f"{TEAM_NAMES[winner]} victory</div>{_img(rank_img, rank_name)}"
+        f"{TEAM_NAMES[winner]} victory</div>"
         f'<div class="meta">{meta}</div></div>',
     ]
     cards = []

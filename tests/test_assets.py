@@ -74,10 +74,9 @@ def test_hero_details(monkeypatch):
 
 
 def test_rank(monkeypatch):
-    ranks = [{"tier": 5, "name": "Ritualist", "images": {}}]
+    ranks = [{"tier": 5, "name": "Ritualist"}]
     monkeypatch.setattr(assets, "load", lambda kind: ranks)
-    monkeypatch.setattr(assets, "image", lambda url: None)
     assets.rank.cache_clear()
-    assert assets.rank(53) == ("Ritualist 3", None)
-    assert assets.rank(70)[0] == "Tier 7"
+    assert assets.rank(53) == "Ritualist 3"
+    assert assets.rank(70) == "Tier 7"
     assets.rank.cache_clear()

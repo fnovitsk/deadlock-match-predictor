@@ -1,7 +1,7 @@
-"""Hero and rank assets, from the API's static assets (`/v1/assets/...`).
+"""Hero portraits and rank names, from the API's static assets (`/v1/assets/...`).
 
 The lists are fetched once and cached in `data/assets/` (heroes.json, ranks.json), and
-images in `data/assets/images/`; delete them to refresh after a game update. Without
+hero portraits in `data/assets/images/`; delete them to refresh after a game update. Without
 network, names fall back to ids ("Hero 12") and images to None. The assets used to live
 on assets.deadlock-api.com, which no longer exists.
 """
@@ -105,10 +105,9 @@ def hero(hero_id: int) -> Hero:
 
 
 @cache
-def rank(badge: int) -> tuple[str, str | None]:
-    """The rank name ("Acolyte 3") and badge image of a badge (tier·10 + subtier)."""
+def rank(badge: int) -> str:
+    """The rank name ("Acolyte 3") of a badge (tier·10 + subtier)."""
     tier, sub = divmod(int(badge), 10)
     entry = next((r for r in load("ranks") if r.get("tier") == tier), {})
     name = entry.get("name") or f"Tier {tier}"
-    images = entry.get("images") or {}
-    return (f"{name} {sub}" if sub else name), image(images.get(f"large_subrank{sub}"))
+    return f"{name} {sub}" if sub else name
